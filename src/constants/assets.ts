@@ -14,25 +14,13 @@ export const PORTRAIT_ASSET = {
 export const CRITICAL_ASSETS: readonly PreloadAssetItem[] = [
   {
     id: "portrait",
-    label: "LOADING PORTRAIT FRAME",
+    label: "ĐANG TẢI HÌNH ẢNH",
     src: PORTRAIT_ASSET.src,
     type: "image",
   },
   {
-    id: "poster-01",
-    label: "BUFFERING REEL 01 POSTER",
-    src: "/media/posters/project-01.webp",
-    type: "image",
-  },
-  {
-    id: "poster-02",
-    label: "BUFFERING REEL 02 POSTER",
-    src: "/media/posters/project-02.webp",
-    type: "image",
-  },
-  {
     id: "video-meta-01",
-    label: "SYNCING 24FPS TIMECODE",
+    label: "ĐANG ĐỒNG BỘ DỮ LIỆU PHIM",
     src: "/media/videos/projects/project-01.mp4",
     type: "video-meta",
   },

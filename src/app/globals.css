@@ -320,3 +320,170 @@ body {
   animation: tally-blink 2.8s ease-in-out infinite;
   will-change: opacity;
 }
+
+@keyframes film-track-vertical {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(0, -24px, 0);
+  }
+}
+
+.animate-film-track-vertical {
+  animation: film-track-vertical 2.4s linear infinite;
+  will-change: transform;
+}
+
+/* Hiệu ứng đĩa CV ẩn hoàn toàn sau khung video, chỉ trượt ra ngoài khi hover (100% GPU) */
+.disc-drawer-right {
+  opacity: 0;
+  transform: translate3d(-18%, -50%, 0);
+  transition:
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease-out;
+  will-change: transform, opacity;
+}
+
+.group:hover .disc-drawer-right,
+.group:focus-visible .disc-drawer-right {
+  opacity: 1;
+  transform: translate3d(48%, -50%, 0);
+}
+
+.disc-drawer-left {
+  opacity: 0;
+  transform: translate3d(18%, -50%, 0);
+  transition:
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease-out;
+  will-change: transform, opacity;
+}
+
+.group:hover .disc-drawer-left,
+.group:focus-visible .disc-drawer-left {
+  opacity: 1;
+  transform: translate3d(-48%, -50%, 0);
+}
+
+/* ==========================================================================
+   TV STATIC & BROKEN CRT SCREEN KEYFRAMES (100% GPU / 120 FPS)
+   ========================================================================== */
+@keyframes tv-static-jitter {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  20% {
+    transform: translate3d(-4%, 3%, 0);
+  }
+  40% {
+    transform: translate3d(3%, -4%, 0);
+  }
+  60% {
+    transform: translate3d(-3%, -2%, 0);
+  }
+  80% {
+    transform: translate3d(4%, 4%, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes tv-static-jitter-alt {
+  0% {
+    transform: translate3d(2%, -2%, 0);
+  }
+  25% {
+    transform: translate3d(-4%, -3%, 0);
+  }
+  50% {
+    transform: translate3d(4%, 3%, 0);
+  }
+  75% {
+    transform: translate3d(-2%, 4%, 0);
+  }
+  100% {
+    transform: translate3d(2%, -2%, 0);
+  }
+}
+
+@keyframes crt-scan-roll {
+  from {
+    transform: translate3d(0, -100%, 0);
+  }
+  to {
+    transform: translate3d(0, 100vh, 0);
+  }
+}
+
+@keyframes crt-glitch-bar {
+  0%,
+  68%,
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
+  }
+  71% {
+    opacity: 0.85;
+    transform: translate3d(-24px, 0, 0) scale3d(1.05, 1, 1);
+  }
+  75% {
+    opacity: 0.45;
+    transform: translate3d(28px, 6px, 0) scale3d(0.96, 1.5, 1);
+  }
+  79% {
+    opacity: 0.9;
+    transform: translate3d(-16px, -3px, 0) scale3d(1.03, 1, 1);
+  }
+  83% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
+  }
+}
+
+@keyframes crt-glitch-bar-alt {
+  0%,
+  54%,
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+  57% {
+    opacity: 0.75;
+    transform: translate3d(26px, 0, 0);
+  }
+  61% {
+    opacity: 0.95;
+    transform: translate3d(-32px, -4px, 0);
+  }
+  65% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.animate-tv-static {
+  animation: tv-static-jitter 0.2s steps(1) infinite;
+  will-change: transform;
+}
+
+.animate-tv-static-alt {
+  animation: tv-static-jitter-alt 0.27s steps(1) infinite;
+  will-change: transform;
+}
+
+.animate-crt-roll {
+  animation: crt-scan-roll 5.2s linear infinite;
+  will-change: transform;
+}
+
+.animate-crt-glitch-1 {
+  animation: crt-glitch-bar 3.8s steps(1) infinite;
+  will-change: transform, opacity;
+}
+
+.animate-crt-glitch-2 {
+  animation: crt-glitch-bar-alt 4.9s steps(1) infinite;
+  will-change: transform, opacity;
+}

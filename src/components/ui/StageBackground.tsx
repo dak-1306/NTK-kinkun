@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useId } from "react";
 import { CdDisc } from "./CdDisc";
 import { StudioLightProp } from "./StudioLightProp";
 import { CinemaCameraProp } from "./CinemaCameraProp";
@@ -13,6 +13,9 @@ interface StageBackgroundProps {
 export const StageBackground = memo(function StageBackground({
   variant = "standard",
 }: StageBackgroundProps) {
+  const uid = useId();
+  const trackClipId = `${uid}-film-track`;
+
   if (variant === "standard") {
     return (
       <div
@@ -58,55 +61,58 @@ export const StageBackground = memo(function StageBackground({
       aria-hidden="true"
       className="pointer-events-none absolute inset-0 -z-10 overflow-clip bg-[#050505]"
     >
-      {/* NỀN CHO TRANG PROJECT (CINEMA) */}
-      <div className="animate-brush-drift absolute inset-0">
-        <div
-          className="absolute top-[23%] -left-[4%] h-[28px] w-[76%]"
-          style={{
-            background:
-              "linear-gradient(90deg, rgba(110,2,9,0.2) 0%, rgba(138,3,12,0.85) 35%, rgba(217,4,41,0.65) 75%, transparent 100%)",
-            clipPath:
-              "polygon(0% 35%, 16% 8%, 85% 22%, 100% 52%, 80% 90%, 10% 78%)",
-          }}
-        />
-        <div
-          className="absolute top-[51%] -left-[2%] h-[36px] w-[84%]"
-          style={{
-            background:
-              "linear-gradient(90deg, rgba(122,2,10,0.3) 0%, rgba(168,4,16,0.88) 40%, rgba(217,4,41,0.7) 78%, transparent 100%)",
-            clipPath:
-              "polygon(0% 48%, 14% 14%, 88% 18%, 100% 50%, 84% 86%, 12% 82%)",
-          }}
-        />
-        <div
-          className="absolute top-[77%] left-[4%] h-[22px] w-[72%]"
-          style={{
-            background:
-              "linear-gradient(90deg, transparent 0%, rgba(89,1,7,0.85) 28%, rgba(168,4,16,0.65) 72%, transparent 100%)",
-            clipPath:
-              "polygon(0% 50%, 20% 15%, 82% 25%, 100% 55%, 78% 85%, 15% 75%)",
-          }}
-        />
-      </div>
-
-      {/* ĐĨA CV XOAY 1 NỬA Ở CẠNH PHẢI */}
-      <div className="absolute top-1/2 right-0 translate-x-1/2 -translate-y-1/2 opacity-90">
-        <CdDisc variant="half" />
-      </div>
-
-      {/* LỚP CẮT KÍNH KIẾN TRÚC & ĐƯỜNG TÂM NGẮM TĨNH */}
-      <div className="absolute inset-y-0 right-[14%] w-[1px] bg-white/12" />
-      <div className="absolute inset-y-0 right-[28%] w-[1px] bg-white/[0.05]" />
-      <div className="absolute top-[22%] inset-x-0 h-[1px] bg-white/[0.06]" />
-      <div className="absolute bottom-[24%] inset-x-0 h-[1px] bg-white/[0.06]" />
-
+      {/* 1. DẢI NEO ĐỎ THẪM DỌC BÊN TRÁI TẠO ĐIỂM TỰA CHO TIÊU ĐỀ THỂ LOẠI */}
       <div
-        className="absolute top-[22%] right-[28%] h-4 w-4 translate-x-1/2 -translate-y-1/2"
+        className="absolute inset-y-0 left-0 w-[220px] sm:w-[320px] lg:w-[380px]"
         style={{
-          backgroundImage:
-            "linear-gradient(to right, transparent 47%, rgba(255,255,255,0.45) 47%, rgba(255,255,255,0.45) 53%, transparent 53%), linear-gradient(to bottom, transparent 47%, rgba(255,255,255,0.45) 47%, rgba(255,255,255,0.45) 53%, transparent 53%)",
+          background:
+            "linear-gradient(90deg, rgba(110, 2, 9, 0.24) 0%, rgba(110, 2, 9, 0.06) 55%, transparent 100%)",
         }}
       />
+      <div className="absolute inset-y-0 left-0 w-[2px] bg-[var(--accent)]/65" />
+
+      {/* 2. LƯỚI KHUNG NGẮM PHÒNG TỐI 1PX (TÔN TỐI ĐA MÀU SẮC VIDEO) */}
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage:
+            "linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px)",
+          backgroundSize: "33.333% 50%",
+        }}
+      />
+
+      {/* 3. DẢI RĂNG CƯA PHIM 35MM TRƯỢT DỌC CỰC MẢNH Ở SÁT MÉP PHẢI */}
+      <div className="absolute inset-y-0 right-2 hidden w-4 sm:block lg:right-4">
+        <div className="absolute inset-y-0 left-0 w-[1px] bg-white/[0.08]" />
+        <div className="absolute inset-y-0 right-0 w-[1px] bg-white/[0.08]" />
+        <svg
+          viewBox="0 0 16 1000"
+          preserveAspectRatio="none"
+          className="h-full w-full"
+        >
+          <defs>
+            <clipPath id={trackClipId}>
+              <rect x="0" y="0" width="16" height="1000" />
+            </clipPath>
+          </defs>
+          <g clipPath={`url(#${trackClipId})`}>
+            <line
+              x1="8"
+              y1="-24"
+              x2="8"
+              y2="1048"
+              stroke="rgba(217, 4, 41, 0.42)"
+              strokeWidth="3"
+              strokeDasharray="5 19"
+              className="animate-film-track-vertical"
+            />
+          </g>
+        </svg>
+      </div>
+
+      {/* 4. DẤU TÂM NGẮM GÓC KHUNG CHIẾU */}
+      <div className="absolute top-8 right-8 h-3 w-3 border-t border-r border-white/20" />
+      <div className="absolute bottom-8 right-8 h-3 w-3 border-b border-r border-white/20" />
     </div>
   );
 });
