@@ -1,26 +1,322 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   1. SINGLE DARK THEME TOKENS (BLACK × CRIMSON CINEMA)
+   ========================================================================== */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #050505;
+  --surface: #0c0c0e;
+  --surface-elevated: #141418;
+  --text-primary: #f2f2f2;
+  --text-secondary: #8e8e95;
+  --border: #242429;
+  --border-strong: #3c3c44;
+  --accent: #d90429;
+  --accent-deep: #7a0202;
+  --accent-muted: rgba(217, 4, 41, 0.16);
+  --grid-line: rgba(255, 255, 255, 0.04);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ==========================================================================
+   2. BASE RESET & SCROLL SAFETY (OVERFLOW-CLIP CHỐNG HỎNG STICKY)
+   ========================================================================== */
+html {
+  background-color: var(--background);
+  color: var(--text-primary);
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  overflow-x: clip;
+  background-color: var(--background);
+  color: var(--text-primary);
+  font-feature-settings:
+    "ss01" on,
+    "cv01" on;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ==========================================================================
+   3. CHAMFERED GEOMETRY UTILITIES (VÁT GÓC SẮC NÉT)
+   ========================================================================== */
+.chamfer-sm {
+  clip-path: polygon(
+    8px 0,
+    100% 0,
+    100% calc(100% - 8px),
+    calc(100% - 8px) 100%,
+    0 100%,
+    0 8px
+  );
+}
+
+.chamfer-md {
+  clip-path: polygon(
+    14px 0,
+    100% 0,
+    100% calc(100% - 14px),
+    calc(100% - 14px) 100%,
+    0 100%,
+    0 14px
+  );
+}
+
+.chamfer-lg {
+  clip-path: polygon(
+    22px 0,
+    100% 0,
+    100% calc(100% - 22px),
+    calc(100% - 22px) 100%,
+    0 100%,
+    0 22px
+  );
+}
+
+/* ==========================================================================
+   4. GPU-ONLY KEYFRAMES (120 FPS / ZERO PAINT FLASHING)
+   ========================================================================== */
+.svg-origin-center {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.svg-origin-top {
+  transform-box: fill-box;
+  transform-origin: top center;
+}
+
+@keyframes disc-spin {
+  from {
+    transform: rotate3d(0, 0, 1, 0deg);
+  }
+  to {
+    transform: rotate3d(0, 0, 1, 360deg);
+  }
+}
+
+@keyframes disc-spin-slow {
+  from {
+    transform: rotate3d(0, 0, 1, 0deg);
+  }
+  to {
+    transform: rotate3d(0, 0, 1, 360deg);
+  }
+}
+
+@keyframes cinema-reel-spin {
+  from {
+    transform: rotate3d(0, 0, 1, 0deg);
+  }
+  to {
+    transform: rotate3d(0, 0, 1, 360deg);
+  }
+}
+
+@keyframes follow-focus-tick {
+  0%,
+  100% {
+    transform: rotate3d(0, 0, 1, -18deg);
+  }
+  50% {
+    transform: rotate3d(0, 0, 1, 22deg);
+  }
+}
+
+@keyframes cable-sway {
+  0%,
+  100% {
+    transform: rotate3d(0, 0, 1, -1.8deg);
+  }
+  50% {
+    transform: rotate3d(0, 0, 1, 1.8deg);
+  }
+}
+
+@keyframes film-sprocket-glide {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-24px, 0, 0);
+  }
+}
+
+@keyframes studio-beam-sway {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: rotate3d(0, 0, 1, -1.5deg) scale3d(0.98, 1, 1);
+  }
+  50% {
+    opacity: 0.56;
+    transform: rotate3d(0, 0, 1, 1.8deg) scale3d(1.03, 1, 1);
+  }
+}
+
+@keyframes tally-blink {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes brush-drift {
+  0%,
+  100% {
+    transform: translate3d(-10px, 0, 0);
+  }
+  50% {
+    transform: translate3d(10px, 0, 0);
+  }
+}
+
+@keyframes filmstrip-left {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes filmstrip-right {
+  from {
+    transform: translate3d(-50%, 0, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.animate-disc-fast {
+  animation: disc-spin 3.2s linear infinite;
+  will-change: transform;
+}
+
+.animate-disc-project {
+  animation: disc-spin 9s linear infinite;
+  will-change: transform;
+}
+
+.animate-disc-bg {
+  animation: disc-spin-slow 28s linear infinite;
+  will-change: transform;
+}
+
+.animate-cinema-reel {
+  animation: cinema-reel-spin 20s linear infinite;
+  will-change: transform;
+}
+
+.animate-cinema-reel-fast {
+  animation: cinema-reel-spin 14s linear infinite;
+  will-change: transform;
+}
+
+.animate-follow-focus {
+  animation: follow-focus-tick 7.5s cubic-bezier(0.45, 0.05, 0.55, 0.95)
+    infinite;
+  will-change: transform;
+}
+
+.animate-cable-sway {
+  animation: cable-sway 6.5s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-film-sprocket {
+  animation: film-sprocket-glide 1.8s linear infinite;
+  will-change: transform;
+}
+
+.animate-studio-beam {
+  animation: studio-beam-sway 8.5s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.animate-tally {
+  animation: tally-blink 2.4s ease-in-out infinite;
+  will-change: opacity;
+}
+
+.animate-brush-drift {
+  animation: brush-drift 16s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-filmstrip-left {
+  animation: filmstrip-left 28s linear infinite;
+  will-change: transform;
+}
+
+.animate-filmstrip-right {
+  animation: filmstrip-right 28s linear infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-disc-fast,
+  .animate-disc-project,
+  .animate-disc-bg,
+  .animate-cinema-reel,
+  .animate-cinema-reel-fast,
+  .animate-follow-focus,
+  .animate-cable-sway,
+  .animate-film-sprocket,
+  .animate-studio-beam,
+  .animate-tally,
+  .animate-brush-drift,
+  .animate-filmstrip-left,
+  .animate-filmstrip-right {
+    animation: none;
+  }
+}
+/* Hiệu ứng nền thiết bị điện ảnh tinh tế (100% GPU: transform + opacity) */
+@keyframes cinema-reel-spin {
+  from {
+    transform: rotate3d(0, 0, 1, 0deg);
+  }
+  to {
+    transform: rotate3d(0, 0, 1, 360deg);
+  }
+}
+
+@keyframes studio-beam-sway {
+  0%,
+  100% {
+    opacity: 0.22;
+    transform: rotate3d(0, 0, 1, -2deg) scale3d(0.98, 1, 1);
+  }
+  50% {
+    opacity: 0.48;
+    transform: rotate3d(0, 0, 1, 2deg) scale3d(1.03, 1, 1);
+  }
+}
+
+@keyframes tally-blink {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+.animate-cinema-reel {
+  animation: cinema-reel-spin 22s linear infinite;
+  will-change: transform;
+}
+
+.animate-studio-beam {
+  animation: studio-beam-sway 9s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.animate-tally {
+  animation: tally-blink 2.8s ease-in-out infinite;
+  will-change: opacity;
 }
