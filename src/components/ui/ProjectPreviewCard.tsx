@@ -2,6 +2,12 @@
 
 import { memo, useEffect, useRef, useState } from "react";
 import { VideoStateOverlay } from "./VideoStateOverlay";
+import {
+  getSharedVideoEntry,
+  isVideoClaimedByModal,
+  prioritizePoolVideo,
+  subscribeSharedVideoPool,
+} from "@/lib/sharedVideoPool";
 import { PROJECT_UI_LABELS } from "@/constants/projects";
 import type { DiscSlideDirection, ProjectVideoItem } from "@/types/project";
 
@@ -36,7 +42,6 @@ function isCardMostlyCovered(cardEl: HTMLElement): boolean {
       const overlapBottom = Math.min(cardRect.bottom, secRect.bottom);
       const overlapHeight = Math.max(0, overlapBottom - overlapTop);
 
-      // Chỉ tạm dừng video lớp dưới khi section lớp trên đã che phủ > 85% khung hình
       if (overlapHeight / cardRect.height > 0.85) {
         return true;
       }
@@ -53,58 +58,72 @@ export const ProjectPreviewCard = memo(function ProjectPreviewCard({
   className = "",
 }: ProjectPreviewCardProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const videoHostRef = useRef<HTMLDivElement | null>(null);
 
   const [hasFirstFrame, setHasFirstFrame] = useState(false);
   const [hasVideoError, setHasVideoError] = useState(false);
+  const [modalClaimed, setModalClaimed] = useState(() =>
+    isVideoClaimedByModal(item.previewVideoUrl),
+  );
 
-  // Đồng bộ trạng thái nếu trình duyệt đã nạp xong khung hình trước khi hydrate
   useEffect(() => {
-    const video = videoRef.current;
-    if (video && video.readyState >= 2) {
-      setHasFirstFrame(true);
-    }
+    return subscribeSharedVideoPool(() => {
+      setModalClaimed(isVideoClaimedByModal(item.previewVideoUrl));
+    });
   }, [item.previewVideoUrl]);
 
-  // Theo dõi vùng nhìn & mức độ che phủ để bật/tắt phát mượt mà
+  // Gắn phần tử <video> dùng chung vào khung card & điều khiển phát/tạm dừng theo vùng nhìn
   useEffect(() => {
     const container = containerRef.current;
-    const video = videoRef.current;
-    if (!container || !video || hasVideoError) return;
+    const host = videoHostRef.current;
+    if (!container || !host || modalClaimed) return;
+
+    const entry = getSharedVideoEntry(item.previewVideoUrl);
+    const video = entry.element;
+
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.className = "h-full w-full object-cover object-center";
+
+    if (video.parentElement !== host) {
+      host.appendChild(video);
+    }
+
+    if (entry.isReady || video.readyState >= 2) {
+      setHasFirstFrame(true);
+    }
+
+    const handleFrameReady = () => {
+      setHasFirstFrame(true);
+      setHasVideoError(false);
+    };
+    const handleError = () => {
+      setHasVideoError(true);
+    };
+
+    video.addEventListener("loadeddata", handleFrameReady);
+    video.addEventListener("canplay", handleFrameReady);
+    video.addEventListener("playing", handleFrameReady);
+    video.addEventListener("error", handleError);
 
     let isIntersecting = false;
     let rafId = 0;
-    let stallTimer = 0;
-
-    const clearStallTimer = () => {
-      if (stallTimer !== 0) {
-        window.clearTimeout(stallTimer);
-        stallTimer = 0;
-      }
-    };
 
     const syncPlaybackState = () => {
       rafId = 0;
+      if (entry.isClaimedByModal) return;
+
       const shouldPlay = isIntersecting && !isCardMostlyCovered(container);
-
       if (shouldPlay) {
-        // Nếu sau 10s đang trong vùng nhìn mà vẫn chưa giải mã được khung đầu -> báo lỗi thay vì xoay mãi
-        if (video.readyState < 2 && stallTimer === 0) {
-          stallTimer = window.setTimeout(() => {
-            if (video.readyState < 2) {
-              setHasVideoError(true);
-            }
-          }, 10000);
+        if (video.parentElement !== host) {
+          host.appendChild(video);
         }
-
         if (video.paused) {
           video.play().catch(() => {});
         }
-      } else {
-        clearStallTimer();
-        if (!video.paused) {
-          video.pause();
-        }
+      } else if (!video.paused) {
+        video.pause();
       }
     };
 
@@ -115,9 +134,9 @@ export const ProjectPreviewCard = memo(function ProjectPreviewCard({
 
     const observer = new IntersectionObserver(
       (entries) => {
-        const entry = entries[0];
-        if (!entry) return;
-        isIntersecting = entry.isIntersecting;
+        const first = entries[0];
+        if (!first) return;
+        isIntersecting = first.isIntersecting;
         syncPlaybackState();
       },
       { rootMargin: "150px 0px", threshold: 0.1 },
@@ -131,21 +150,22 @@ export const ProjectPreviewCard = memo(function ProjectPreviewCard({
       observer.disconnect();
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("resize", handleScroll);
-      clearStallTimer();
       if (rafId !== 0) {
         window.cancelAnimationFrame(rafId);
       }
+      video.removeEventListener("loadeddata", handleFrameReady);
+      video.removeEventListener("canplay", handleFrameReady);
+      video.removeEventListener("playing", handleFrameReady);
+      video.removeEventListener("error", handleError);
     };
-  }, [hasVideoError, item.previewVideoUrl]);
+  }, [item.previewVideoUrl, modalClaimed]);
 
   const handleRetryPreview = () => {
     setHasVideoError(false);
     setHasFirstFrame(false);
-    const el = videoRef.current;
-    if (el) {
-      el.load();
-      el.play().catch(() => {});
-    }
+    const entry = getSharedVideoEntry(item.previewVideoUrl);
+    entry.element.load();
+    entry.element.play().catch(() => {});
   };
 
   const drawerPositionClass =
@@ -158,6 +178,8 @@ export const ProjectPreviewCard = memo(function ProjectPreviewCard({
       ref={containerRef}
       role="button"
       tabIndex={0}
+      onMouseEnter={() => prioritizePoolVideo(item.fullVideoUrl)}
+      onTouchStart={() => prioritizePoolVideo(item.fullVideoUrl)}
       onClick={() => onSelect(item)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -206,18 +228,9 @@ export const ProjectPreviewCard = memo(function ProjectPreviewCard({
 
       {/* 2. KHUNG VIDEO PREVIEW CHÍNH (Z-10) */}
       <div className="relative z-10 h-full w-full overflow-clip border border-[var(--border-strong)] bg-[#08080a] transition-colors duration-200 group-hover:border-[var(--accent)] group-focus-visible:border-[var(--accent)]">
-        <video
-          ref={videoRef}
-          src={item.previewVideoUrl}
-          muted
-          loop
-          playsInline
-          preload="auto"
-          onLoadedData={() => setHasFirstFrame(true)}
-          onCanPlay={() => setHasFirstFrame(true)}
-          onPlaying={() => setHasFirstFrame(true)}
-          onError={() => setHasVideoError(true)}
-          className={`h-full w-full object-cover object-center transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.03] ${
+        <div
+          ref={videoHostRef}
+          className={`h-full w-full transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.03] ${
             hasFirstFrame ? "opacity-100" : "opacity-0"
           }`}
         />
@@ -230,7 +243,6 @@ export const ProjectPreviewCard = memo(function ProjectPreviewCard({
           <VideoStateOverlay
             status="error"
             variant="compact"
-          
             onRetry={handleRetryPreview}
           />
         )}
@@ -245,11 +257,8 @@ export const ProjectPreviewCard = memo(function ProjectPreviewCard({
           }}
         />
 
-       
-
         {/* Cụm thông tin góc dưới */}
         <div className="absolute inset-x-0 bottom-0 z-10 p-3.5 sm:p-4">
-         
           <h3 className="mt-1.5 truncate text-sm font-semibold uppercase tracking-wide text-[var(--text-primary)] sm:text-base">
             {item.title}
           </h3>

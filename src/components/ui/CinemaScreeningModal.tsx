@@ -6,6 +6,7 @@ import { X, Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { TvStaticBackdrop } from "./TvStaticBackdrop";
 import { VideoStateOverlay } from "./VideoStateOverlay";
 import { CinemaButton } from "./CinemaButton";
+import { claimSharedVideo, releaseSharedVideo } from "@/lib/sharedVideoPool";
 import { PROJECT_UI_LABELS } from "@/constants/projects";
 import type { ProjectVideoItem } from "@/types/project";
 
@@ -21,20 +22,12 @@ interface ScreeningPlayerProps {
 
 type VideoWithFrameCallback = HTMLVideoElement & {
   requestVideoFrameCallback?: (callback: () => void) => number;
-  cancelVideoFrameCallback?: (handle: number) => void;
 };
 
-function formatTimecode(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds < 0) return "00:00";
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
-}
-
 function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
+  const videoHostRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const progressBarRef = useRef<HTMLDivElement | null>(null);
-  const timecodeRef = useRef<HTMLSpanElement | null>(null);
   const bufferingTimerRef = useRef<number>(0);
 
   const [isPlaying, setIsPlaying] = useState(true);
@@ -55,55 +48,75 @@ function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
     setIsBuffering(false);
   }, []);
 
+  // Tiếp quản trực tiếp phần tử <video> đã tải sẵn từ preview
   useEffect(() => {
+    const host = videoHostRef.current;
+    if (!host) return;
+
+    const el = claimSharedVideo(video.fullVideoUrl);
+    videoRef.current = el;
+
+    el.className = "h-full w-full object-contain";
+    el.loop = false;
+    el.muted = false;
+    el.currentTime = 0;
+    host.appendChild(el);
+
+    const revealOnFirstPaint = () => {
+      const v = el as VideoWithFrameCallback;
+      const commit = () => {
+        setHasPaintedFirstFrame(true);
+        clearBufferingOverlay();
+      };
+      if (typeof v.requestVideoFrameCallback === "function") {
+        v.requestVideoFrameCallback(commit);
+      } else {
+        window.requestAnimationFrame(commit);
+      }
+    };
+
+    if (el.readyState >= 2) {
+      revealOnFirstPaint();
+    } else {
+      scheduleBufferingOverlay(180);
+    }
+
+    const onWaiting = () => scheduleBufferingOverlay(350);
+    const onPlaying = () => {
+      setIsPlaying(true);
+      revealOnFirstPaint();
+    };
+    const onSeeked = () => clearBufferingOverlay();
+    const onPause = () => setIsPlaying(false);
+    const onError = () => {
+      clearBufferingOverlay();
+      setHasMediaError(true);
+    };
+
+    el.addEventListener("waiting", onWaiting);
+    el.addEventListener("playing", onPlaying);
+    el.addEventListener("seeked", onSeeked);
+    el.addEventListener("pause", onPause);
+    el.addEventListener("error", onError);
+
+    el.play().catch(() => {
+      // Dự phòng nếu trình duyệt chặn autoplay có tiếng
+      el.muted = true;
+      setIsMuted(true);
+      el.play().catch(() => {});
+    });
+
     return () => {
       window.clearTimeout(bufferingTimerRef.current);
+      el.removeEventListener("waiting", onWaiting);
+      el.removeEventListener("playing", onPlaying);
+      el.removeEventListener("seeked", onSeeked);
+      el.removeEventListener("pause", onPause);
+      el.removeEventListener("error", onError);
+      videoRef.current = null;
+      releaseSharedVideo(video.fullVideoUrl);
     };
-  }, []);
-
-  // Chỉ ẩn lớp phủ tải & mở video đúng nhịp VSync khi GPU đã vẽ xong khung hình đầu tiên
-  const handleVideoPlaying = useCallback(() => {
-    setIsPlaying(true);
-
-    if (hasPaintedFirstFrame) {
-      clearBufferingOverlay();
-      return;
-    }
-
-    const el = videoRef.current as VideoWithFrameCallback | null;
-    if (!el) return;
-
-    const commitFirstPaint = () => {
-      setHasPaintedFirstFrame(true);
-      clearBufferingOverlay();
-    };
-
-    if (typeof el.requestVideoFrameCallback === "function") {
-      el.requestVideoFrameCallback(() => {
-        commitFirstPaint();
-      });
-    } else {
-      window.requestAnimationFrame(() => {
-        commitFirstPaint();
-      });
-    }
-  }, [hasPaintedFirstFrame, clearBufferingOverlay]);
-
-  // Tạm dừng toàn bộ video preview nền khi mở phòng chiếu để dồn 100% băng thông & GPU cho video chính
-  useEffect(() => {
-    const allVideos = Array.from(document.querySelectorAll("video"));
-    const pausedBackgroundVideos = allVideos.filter(
-      (el) => el !== videoRef.current && !el.paused,
-    );
-
-    pausedBackgroundVideos.forEach((el) => el.pause());
-
-    return () => {
-      pausedBackgroundVideos.forEach((el) => {
-        el.play().catch(() => {});
-      });
-    };
-  }, []);
+  }, [video.fullVideoUrl, clearBufferingOverlay, scheduleBufferingOverlay]);
 
   // Khóa cuộn trang & gắn phím tắt ESC / Space
   useEffect(() => {
@@ -133,7 +146,7 @@ function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
     };
   }, [onClose]);
 
-  // Vòng lặp rAF cập nhật thanh tiến trình video bằng GPU scale3d
+  // Cập nhật thanh tiến trình video bằng GPU scale3d
   useEffect(() => {
     let rafId = 0;
 
@@ -143,11 +156,6 @@ function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
         const ratio = Math.min(1, Math.max(0, el.currentTime / el.duration));
         if (progressBarRef.current) {
           progressBarRef.current.style.transform = `scale3d(${ratio}, 1, 1)`;
-        }
-        if (timecodeRef.current) {
-          timecodeRef.current.textContent = `${formatTimecode(
-            el.currentTime,
-          )} / ${formatTimecode(el.duration)}`;
         }
       }
       rafId = window.requestAnimationFrame(syncTimeline);
@@ -218,10 +226,9 @@ function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
       aria-label={PROJECT_UI_LABELS.modal.dialogAriaLabel}
       className="fixed inset-0 z-[70] flex flex-col justify-between bg-[#030303] p-4 sm:p-8"
     >
-      {/* 1. BACKGROUND NHIỄU TV ANALOG / CRT PHA ĐỎ */}
       <TvStaticBackdrop intensity="normal" />
 
-      {/* 2. THANH TIÊU ĐỀ PHÒNG CHIẾU */}
+      {/* THANH TIÊU ĐỀ PHÒNG CHIẾU */}
       <div className="relative z-10 mx-auto flex w-full max-w-[1240px] items-start justify-between gap-4 border-b border-[var(--border)] pb-3.5">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 font-mono text-[11px] tracking-[0.18em] text-[var(--accent)]">
@@ -244,29 +251,13 @@ function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
         </button>
       </div>
 
-      {/* 3. KHUNG MÀN CHIẾU CHÍNH */}
+      {/* KHUNG MÀN CHIẾU CHÍNH */}
       <div className="relative z-10 mx-auto my-auto flex w-full max-w-[1240px] flex-col items-center justify-center">
         <div className="relative aspect-video max-h-[60dvh] w-full overflow-clip border border-[var(--border-strong)] bg-black sm:max-h-[64dvh]">
-          <video
-            ref={videoRef}
-            src={video.fullVideoUrl}
-            poster={video.previewVideoUrl}
-            autoPlay
-            playsInline
-            preload="auto"
+          <div
+            ref={videoHostRef}
             onClick={togglePlay}
-            onLoadStart={() => scheduleBufferingOverlay(180)}
-            onWaiting={() => scheduleBufferingOverlay(350)}
-            onPlaying={handleVideoPlaying}
-            onSeeked={() => {
-              if (hasPaintedFirstFrame) clearBufferingOverlay();
-            }}
-            onPause={() => setIsPlaying(false)}
-            onError={() => {
-              clearBufferingOverlay();
-              setHasMediaError(true);
-            }}
-            className={`h-full w-full cursor-pointer object-contain transition-opacity duration-200 ${
+            className={`h-full w-full cursor-pointer transition-opacity duration-200 ${
               hasPaintedFirstFrame ? "opacity-100" : "opacity-0"
             }`}
           />
@@ -285,7 +276,7 @@ function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
         </div>
       </div>
 
-      {/* 4. BẢNG ĐIỀU KHIỂN PHÁT & THANH TUA TIẾN TRÌNH */}
+      {/* BẢNG ĐIỀU KHIỂN PHÁT & THANH TUA TIẾN TRÌNH */}
       <div className="relative z-10 mx-auto w-full max-w-[1240px] space-y-3 pt-3">
         <div
           onClick={handleScrub}

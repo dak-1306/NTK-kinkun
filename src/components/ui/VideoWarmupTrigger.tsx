@@ -1,18 +1,25 @@
 "use client";
 
-import { useMemo } from "react";
-import { useBackgroundVideoWarmup } from "@/hooks/useBackgroundVideoWarmup";
+import { useEffect } from "react";
+import { enqueuePoolWarmup } from "@/lib/sharedVideoPool";
 import { PROJECT_GENRES } from "@/constants/projects";
 
 export function VideoWarmupTrigger() {
-  const videoUrls = useMemo(
-    () =>
-      PROJECT_GENRES.flatMap((genre) =>
-        genre.items.map((item) => item.previewVideoUrl),
+  useEffect(() => {
+    const urls = Array.from(
+      new Set(
+        PROJECT_GENRES.flatMap((genre) =>
+          genre.items.map((item) => item.fullVideoUrl),
+        ),
       ),
-    [],
-  );
+    );
 
-  useBackgroundVideoWarmup(videoUrls, true);
+    const timer = window.setTimeout(() => {
+      enqueuePoolWarmup(urls);
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
   return null;
 }
