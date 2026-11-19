@@ -19,6 +19,11 @@ interface ScreeningPlayerProps {
   onClose: () => void;
 }
 
+type VideoWithFrameCallback = HTMLVideoElement & {
+  requestVideoFrameCallback?: (callback: () => void) => number;
+  cancelVideoFrameCallback?: (handle: number) => void;
+};
+
 function formatTimecode(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return "00:00";
   const mins = Math.floor(seconds / 60);
@@ -34,16 +39,14 @@ function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
 
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
+  const [hasPaintedFirstFrame, setHasPaintedFirstFrame] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
   const [hasMediaError, setHasMediaError] = useState(false);
 
-  const scheduleBufferingOverlay = useCallback((delayMs = 220) => {
+  const scheduleBufferingOverlay = useCallback((delayMs = 180) => {
     window.clearTimeout(bufferingTimerRef.current);
     bufferingTimerRef.current = window.setTimeout(() => {
-      const el = videoRef.current;
-      if (el && el.readyState < 3) {
-        setIsBuffering(true);
-      }
+      setIsBuffering(true);
     }, delayMs);
   }, []);
 
@@ -57,6 +60,34 @@ function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
       window.clearTimeout(bufferingTimerRef.current);
     };
   }, []);
+
+  // Chỉ ẩn lớp phủ tải & mở video đúng nhịp VSync khi GPU đã vẽ xong khung hình đầu tiên
+  const handleVideoPlaying = useCallback(() => {
+    setIsPlaying(true);
+
+    if (hasPaintedFirstFrame) {
+      clearBufferingOverlay();
+      return;
+    }
+
+    const el = videoRef.current as VideoWithFrameCallback | null;
+    if (!el) return;
+
+    const commitFirstPaint = () => {
+      setHasPaintedFirstFrame(true);
+      clearBufferingOverlay();
+    };
+
+    if (typeof el.requestVideoFrameCallback === "function") {
+      el.requestVideoFrameCallback(() => {
+        commitFirstPaint();
+      });
+    } else {
+      window.requestAnimationFrame(() => {
+        commitFirstPaint();
+      });
+    }
+  }, [hasPaintedFirstFrame, clearBufferingOverlay]);
 
   // Tạm dừng toàn bộ video preview nền khi mở phòng chiếu để dồn 100% băng thông & GPU cho video chính
   useEffect(() => {
@@ -155,6 +186,7 @@ function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
 
   const handleRetryVideo = () => {
     setHasMediaError(false);
+    setHasPaintedFirstFrame(false);
     scheduleBufferingOverlay(0);
     const el = videoRef.current;
     if (el) {
@@ -176,6 +208,9 @@ function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
     el.currentTime = clickRatio * el.duration;
   };
 
+  const showLoadingOverlay =
+    !hasMediaError && (isBuffering || !hasPaintedFirstFrame);
+
   return (
     <div
       role="dialog"
@@ -183,7 +218,7 @@ function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
       aria-label={PROJECT_UI_LABELS.modal.dialogAriaLabel}
       className="fixed inset-0 z-[70] flex flex-col justify-between bg-[#030303] p-4 sm:p-8"
     >
-      {/* 1. BACKGROUND NHIỄU TV ANALOG / CRT MẤT TÍN HIỆU */}
+      {/* 1. BACKGROUND NHIỄU TV ANALOG / CRT PHA ĐỎ */}
       <TvStaticBackdrop intensity="normal" />
 
       {/* 2. THANH TIÊU ĐỀ PHÒNG CHIẾU */}
@@ -220,23 +255,23 @@ function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
             playsInline
             preload="auto"
             onClick={togglePlay}
-            onLoadStart={() => scheduleBufferingOverlay(220)}
+            onLoadStart={() => scheduleBufferingOverlay(180)}
             onWaiting={() => scheduleBufferingOverlay(350)}
-            onLoadedData={clearBufferingOverlay}
-            onCanPlay={clearBufferingOverlay}
-            onPlaying={() => {
-              clearBufferingOverlay();
-              setIsPlaying(true);
+            onPlaying={handleVideoPlaying}
+            onSeeked={() => {
+              if (hasPaintedFirstFrame) clearBufferingOverlay();
             }}
             onPause={() => setIsPlaying(false)}
             onError={() => {
               clearBufferingOverlay();
               setHasMediaError(true);
             }}
-            className="h-full w-full cursor-pointer object-contain"
+            className={`h-full w-full cursor-pointer object-contain transition-opacity duration-200 ${
+              hasPaintedFirstFrame ? "opacity-100" : "opacity-0"
+            }`}
           />
 
-          {isBuffering && !hasMediaError && (
+          {showLoadingOverlay && (
             <VideoStateOverlay status="loading" variant="theater" />
           )}
 
