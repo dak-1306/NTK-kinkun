@@ -1,13 +1,7 @@
 "use client";
 
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef } from "react";
 import { FILMSTRIP_UI_LABELS } from "@/constants/filmstrip";
-import {
-  getSharedVideoEntry,
-  isVideoClaimedByModal,
-  prioritizePoolVideo,
-  subscribeSharedVideoPool,
-} from "@/lib/sharedVideoPool";
 import type { ProjectVideoItem } from "@/types/project";
 
 interface FilmstripTrackProps {
@@ -35,83 +29,43 @@ const FilmstripCell = memo(function FilmstripCell({
   isSectionVisible,
   onSelect,
 }: FilmstripCellProps) {
-  const hostRef = useRef<HTMLDivElement | null>(null);
-  const cloneVideoRef = useRef<HTMLVideoElement | null>(null);
-
-  const [hasFirstFrame, setHasFirstFrame] = useState(false);
-  const [modalClaimed, setModalClaimed] = useState(() =>
-    isVideoClaimedByModal(item.previewVideoUrl),
-  );
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
-    if (isClone) return;
-    return subscribeSharedVideoPool(() => {
-      setModalClaimed(isVideoClaimedByModal(item.previewVideoUrl));
-    });
-  }, [isClone, item.previewVideoUrl]);
-
-  // 3 ô chính dùng chung phần tử <video> đã đệm sẵn từ pool
-  useEffect(() => {
-    if (isClone || modalClaimed) return;
-    const host = hostRef.current;
-    if (!host) return;
-
-    const entry = getSharedVideoEntry(item.previewVideoUrl);
-    const video = entry.element;
-
-    if (entry.isReady || video.readyState >= 2) {
-      setHasFirstFrame(true);
-    }
-
-    const onReady = () => setHasFirstFrame(true);
-    video.addEventListener("loadeddata", onReady);
-    video.addEventListener("canplay", onReady);
-    video.addEventListener("playing", onReady);
-
-    if (isSectionVisible) {
-      video.muted = true;
-      video.loop = true;
-      video.playsInline = true;
-      video.className = "h-full w-full object-cover object-center";
-      if (video.parentElement !== host) {
-        host.appendChild(video);
-      }
-      if (video.paused) {
-        video.play().catch(() => {});
-      }
-    } else if (!video.paused) {
-      video.pause();
-    }
-
-    return () => {
-      video.removeEventListener("loadeddata", onReady);
-      video.removeEventListener("canplay", onReady);
-      video.removeEventListener("playing", onReady);
-    };
-  }, [isClone, isSectionVisible, item.previewVideoUrl, modalClaimed]);
-
-  // 3 ô nhân bản nối vòng dùng thẻ phụ nhẹ preload="metadata"
-  useEffect(() => {
-    if (!isClone) return;
-    const el = cloneVideoRef.current;
+    const el = videoRef.current;
     if (!el) return;
 
-    if (isSectionVisible && !modalClaimed) {
+    el.defaultMuted = true;
+    el.muted = true;
+    el.setAttribute("muted", "");
+    el.setAttribute("playsinline", "");
+    el.setAttribute("webkit-playsinline", "");
+  }, [item.previewVideoUrl]);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+
+    // Trên mobile, bỏ qua các thẻ clone đã ẩn để tránh trùng URL gây khóa luồng Safari
+    if (isClone && typeof window !== "undefined" && window.innerWidth < 768) {
+      if (!el.paused) el.pause();
+      return;
+    }
+
+    if (isSectionVisible) {
       if (el.paused) {
         el.play().catch(() => {});
       }
     } else if (!el.paused) {
       el.pause();
     }
-  }, [isClone, isSectionVisible, modalClaimed]);
+  }, [isClone, isSectionVisible]);
 
   return (
     <div
       role="button"
       tabIndex={isClone ? -1 : 0}
       aria-hidden={isClone || undefined}
-      onMouseEnter={() => prioritizePoolVideo(item.fullVideoUrl)}
-      onTouchStart={() => prioritizePoolVideo(item.fullVideoUrl)}
       onClick={() => onSelect(item)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -124,8 +78,11 @@ const FilmstripCell = memo(function FilmstripCell({
           ? undefined
           : `${FILMSTRIP_UI_LABELS.openFramePrefix}: ${item.title}`
       }
-      className="group/cell relative w-[300px] shrink-0 cursor-pointer border-r-[8px] border-[#050507] bg-[#08080b] p-2.5 transition-colors duration-150 hover:bg-[#140407] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--accent)] sm:w-[440px] sm:p-3.5 md:w-[540px] lg:w-[620px] xl:w-[680px]"
+      className={`group/cell relative w-[82vw] max-w-[680px] shrink-0 snap-center cursor-pointer border-r-[8px] border-[#050507] bg-[#08080b] p-2.5 transition-colors duration-150 hover:bg-[#140407] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--accent)] sm:w-[460px] sm:p-3.5 md:w-[540px] lg:w-[620px] xl:w-[680px] ${
+        isClone ? "hidden md:block" : ""
+      }`}
     >
+      {/* Khung hình 16:9 khổ lớn */}
       <div className="relative aspect-video w-full overflow-clip border border-[var(--border-strong)] bg-[#060609] transition-colors duration-200 group-hover/cell:border-[var(--accent)]">
         <div
           aria-hidden="true"
@@ -135,30 +92,17 @@ const FilmstripCell = memo(function FilmstripCell({
           <span className="absolute h-[1px] w-4 bg-white/15" />
         </div>
 
-        {!isClone ? (
-          <div
-            ref={hostRef}
-            className={`relative z-10 h-full w-full transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/cell:scale-[1.03] ${
-              hasFirstFrame ? "opacity-100" : "opacity-0"
-            }`}
-          />
-        ) : (
-          <video
-            ref={cloneVideoRef}
-            src={item.previewVideoUrl}
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            onLoadedData={() => setHasFirstFrame(true)}
-            onCanPlay={() => setHasFirstFrame(true)}
-            onPlaying={() => setHasFirstFrame(true)}
-            className={`relative z-10 h-full w-full object-cover object-center transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/cell:scale-[1.03] ${
-              hasFirstFrame ? "opacity-100" : "opacity-0"
-            }`}
-          />
-        )}
+        <video
+          ref={videoRef}
+          src={item.previewVideoUrl}
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          className="relative z-10 h-full w-full object-cover object-center transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/cell:scale-[1.03]"
+        />
 
+        {/* Lớp phủ tối đáy khung giúp chữ luôn sắc nét */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 z-10"
@@ -168,6 +112,7 @@ const FilmstripCell = memo(function FilmstripCell({
           }}
         />
 
+        {/* Nhãn thông tin góc dưới */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end justify-between gap-3 p-3.5 sm:p-4">
           <div className="min-w-0">
             <h3 className="mt-1.5 truncate text-sm font-semibold uppercase tracking-wide text-[var(--text-primary)] sm:text-base">
@@ -187,10 +132,13 @@ export const FilmstripTrack = memo(function FilmstripTrack({
   onSelectVideo,
 }: FilmstripTrackProps) {
   const animationClass =
-    direction === "left" ? "animate-filmstrip-left" : "animate-filmstrip-right";
+    direction === "left"
+      ? "md:animate-filmstrip-left"
+      : "md:animate-filmstrip-right";
 
   return (
     <div className="group/reel relative w-full border-y border-[var(--border-strong)] bg-[#060608]">
+      {/* Hàng lỗ răng cưa phim 35mm phía trên */}
       <div
         aria-hidden="true"
         className="h-4 w-full border-b border-white/10 bg-[#040406] py-1 sm:h-5"
@@ -198,10 +146,11 @@ export const FilmstripTrack = memo(function FilmstripTrack({
         <div className="h-full w-full" style={SPROCKET_STRIP_STYLE} />
       </div>
 
-      <div className="w-full overflow-clip">
+      {/* Mobile: vuốt chạm mượt | Desktop: băng chuyền tự trôi ngang */}
+      <div className="w-full overflow-x-auto snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:overflow-clip">
         <div
-          className={`flex w-max will-change-transform group-hover/reel:[animation-play-state:paused] group-focus-within/reel:[animation-play-state:paused] ${
-            !isSectionVisible ? "[animation-play-state:paused]" : ""
+          className={`flex w-max md:will-change-transform md:group-hover/reel:[animation-play-state:paused] md:group-focus-within/reel:[animation-play-state:paused] ${
+            !isSectionVisible ? "md:[animation-play-state:paused]" : ""
           } ${animationClass}`}
         >
           {items.map((item) => (
@@ -226,6 +175,7 @@ export const FilmstripTrack = memo(function FilmstripTrack({
         </div>
       </div>
 
+      {/* Hàng lỗ răng cưa phim 35mm phía dưới */}
       <div
         aria-hidden="true"
         className="h-4 w-full border-t border-white/10 bg-[#040406] py-1 sm:h-5"

@@ -6,7 +6,6 @@ import { X, Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { TvStaticBackdrop } from "./TvStaticBackdrop";
 import { VideoStateOverlay } from "./VideoStateOverlay";
 import { CinemaButton } from "./CinemaButton";
-import { claimSharedVideo, releaseSharedVideo } from "@/lib/sharedVideoPool";
 import { PROJECT_UI_LABELS } from "@/constants/projects";
 import type { ProjectVideoItem } from "@/types/project";
 
@@ -20,23 +19,17 @@ interface ScreeningPlayerProps {
   onClose: () => void;
 }
 
-type VideoWithFrameCallback = HTMLVideoElement & {
-  requestVideoFrameCallback?: (callback: () => void) => number;
-};
-
 function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
-  const videoHostRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const progressBarRef = useRef<HTMLDivElement | null>(null);
   const bufferingTimerRef = useRef<number>(0);
 
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
-  const [hasPaintedFirstFrame, setHasPaintedFirstFrame] = useState(false);
-  const [isBuffering, setIsBuffering] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(true);
   const [hasMediaError, setHasMediaError] = useState(false);
 
-  const scheduleBufferingOverlay = useCallback((delayMs = 180) => {
+  const scheduleBufferingOverlay = useCallback((delayMs = 200) => {
     window.clearTimeout(bufferingTimerRef.current);
     bufferingTimerRef.current = window.setTimeout(() => {
       setIsBuffering(true);
@@ -48,75 +41,45 @@ function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
     setIsBuffering(false);
   }, []);
 
-  // Tiếp quản trực tiếp phần tử <video> đã tải sẵn từ preview
   useEffect(() => {
-    const host = videoHostRef.current;
-    if (!host) return;
-
-    const el = claimSharedVideo(video.fullVideoUrl);
-    videoRef.current = el;
-
-    el.className = "h-full w-full object-contain";
-    el.loop = false;
-    el.muted = false;
-    el.currentTime = 0;
-    host.appendChild(el);
-
-    const revealOnFirstPaint = () => {
-      const v = el as VideoWithFrameCallback;
-      const commit = () => {
-        setHasPaintedFirstFrame(true);
-        clearBufferingOverlay();
-      };
-      if (typeof v.requestVideoFrameCallback === "function") {
-        v.requestVideoFrameCallback(commit);
-      } else {
-        window.requestAnimationFrame(commit);
-      }
-    };
-
-    if (el.readyState >= 2) {
-      revealOnFirstPaint();
-    } else {
-      scheduleBufferingOverlay(180);
-    }
-
-    const onWaiting = () => scheduleBufferingOverlay(350);
-    const onPlaying = () => {
-      setIsPlaying(true);
-      revealOnFirstPaint();
-    };
-    const onSeeked = () => clearBufferingOverlay();
-    const onPause = () => setIsPlaying(false);
-    const onError = () => {
-      clearBufferingOverlay();
-      setHasMediaError(true);
-    };
-
-    el.addEventListener("waiting", onWaiting);
-    el.addEventListener("playing", onPlaying);
-    el.addEventListener("seeked", onSeeked);
-    el.addEventListener("pause", onPause);
-    el.addEventListener("error", onError);
-
-    el.play().catch(() => {
-      // Dự phòng nếu trình duyệt chặn autoplay có tiếng
-      el.muted = true;
-      setIsMuted(true);
-      el.play().catch(() => {});
-    });
-
     return () => {
       window.clearTimeout(bufferingTimerRef.current);
-      el.removeEventListener("waiting", onWaiting);
-      el.removeEventListener("playing", onPlaying);
-      el.removeEventListener("seeked", onSeeked);
-      el.removeEventListener("pause", onPause);
-      el.removeEventListener("error", onError);
-      videoRef.current = null;
-      releaseSharedVideo(video.fullVideoUrl);
     };
-  }, [video.fullVideoUrl, clearBufferingOverlay, scheduleBufferingOverlay]);
+  }, []);
+
+  // Tạm dừng toàn bộ video preview nền để điện thoại dồn 100% băng thông & decoder cho phòng chiếu
+  useEffect(() => {
+    const allVideos = Array.from(document.querySelectorAll("video"));
+    const pausedBackgroundVideos = allVideos.filter(
+      (el) => el !== videoRef.current && !el.paused,
+    );
+
+    pausedBackgroundVideos.forEach((el) => el.pause());
+
+    return () => {
+      pausedBackgroundVideos.forEach((el) => {
+        el.play().catch(() => {});
+      });
+    };
+  }, []);
+
+  // Khởi chạy video & dự phòng nếu trình duyệt di động chặn autoplay có tiếng
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+
+    el.setAttribute("playsinline", "");
+    el.setAttribute("webkit-playsinline", "");
+
+    el.play().catch(() => {
+      el.muted = true;
+      setIsMuted(true);
+      el.play().catch(() => {
+        setIsPlaying(false);
+        clearBufferingOverlay();
+      });
+    });
+  }, [video.fullVideoUrl, clearBufferingOverlay]);
 
   // Khóa cuộn trang & gắn phím tắt ESC / Space
   useEffect(() => {
@@ -194,7 +157,6 @@ function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
 
   const handleRetryVideo = () => {
     setHasMediaError(false);
-    setHasPaintedFirstFrame(false);
     scheduleBufferingOverlay(0);
     const el = videoRef.current;
     if (el) {
@@ -215,9 +177,6 @@ function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
     );
     el.currentTime = clickRatio * el.duration;
   };
-
-  const showLoadingOverlay =
-    !hasMediaError && (isBuffering || !hasPaintedFirstFrame);
 
   return (
     <div
@@ -254,15 +213,30 @@ function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
       {/* KHUNG MÀN CHIẾU CHÍNH */}
       <div className="relative z-10 mx-auto my-auto flex w-full max-w-[1240px] flex-col items-center justify-center">
         <div className="relative aspect-video max-h-[60dvh] w-full overflow-clip border border-[var(--border-strong)] bg-black sm:max-h-[64dvh]">
-          <div
-            ref={videoHostRef}
+          <video
+            ref={videoRef}
+            src={video.fullVideoUrl}
+            autoPlay
+            playsInline
+            preload="auto"
             onClick={togglePlay}
-            className={`h-full w-full cursor-pointer transition-opacity duration-200 ${
-              hasPaintedFirstFrame ? "opacity-100" : "opacity-0"
-            }`}
+            onWaiting={() => scheduleBufferingOverlay(300)}
+            onLoadedData={clearBufferingOverlay}
+            onCanPlay={clearBufferingOverlay}
+            onPlaying={() => {
+              clearBufferingOverlay();
+              setIsPlaying(true);
+            }}
+            onSeeked={clearBufferingOverlay}
+            onPause={() => setIsPlaying(false)}
+            onError={() => {
+              clearBufferingOverlay();
+              setHasMediaError(true);
+            }}
+            className="h-full w-full cursor-pointer object-contain"
           />
 
-          {showLoadingOverlay && (
+          {isBuffering && !hasMediaError && (
             <VideoStateOverlay status="loading" variant="theater" />
           )}
 

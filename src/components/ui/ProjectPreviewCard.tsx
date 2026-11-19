@@ -2,12 +2,6 @@
 
 import { memo, useEffect, useRef, useState } from "react";
 import { VideoStateOverlay } from "./VideoStateOverlay";
-import {
-  getSharedVideoEntry,
-  isVideoClaimedByModal,
-  prioritizePoolVideo,
-  subscribeSharedVideoPool,
-} from "@/lib/sharedVideoPool";
 import { PROJECT_UI_LABELS } from "@/constants/projects";
 import type { DiscSlideDirection, ProjectVideoItem } from "@/types/project";
 
@@ -58,67 +52,41 @@ export const ProjectPreviewCard = memo(function ProjectPreviewCard({
   className = "",
 }: ProjectPreviewCardProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const videoHostRef = useRef<HTMLDivElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const [hasFirstFrame, setHasFirstFrame] = useState(false);
   const [hasVideoError, setHasVideoError] = useState(false);
-  const [modalClaimed, setModalClaimed] = useState(() =>
-    isVideoClaimedByModal(item.previewVideoUrl),
-  );
 
+  // Gán đầy đủ attribute muted/playsinline chuẩn iOS Safari
   useEffect(() => {
-    return subscribeSharedVideoPool(() => {
-      setModalClaimed(isVideoClaimedByModal(item.previewVideoUrl));
-    });
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.defaultMuted = true;
+    video.muted = true;
+    video.setAttribute("muted", "");
+    video.setAttribute("playsinline", "");
+    video.setAttribute("webkit-playsinline", "");
+
+    if (video.readyState >= 2) {
+      setHasFirstFrame(true);
+    }
   }, [item.previewVideoUrl]);
 
-  // Gắn phần tử <video> dùng chung vào khung card & điều khiển phát/tạm dừng theo vùng nhìn
+  // Chỉ phát khi card nằm trong vùng nhìn & không bị section lớp trên che phủ
   useEffect(() => {
     const container = containerRef.current;
-    const host = videoHostRef.current;
-    if (!container || !host || modalClaimed) return;
-
-    const entry = getSharedVideoEntry(item.previewVideoUrl);
-    const video = entry.element;
-
-    video.muted = true;
-    video.loop = true;
-    video.playsInline = true;
-    video.className = "h-full w-full object-cover object-center";
-
-    if (video.parentElement !== host) {
-      host.appendChild(video);
-    }
-
-    if (entry.isReady || video.readyState >= 2) {
-      setHasFirstFrame(true);
-    }
-
-    const handleFrameReady = () => {
-      setHasFirstFrame(true);
-      setHasVideoError(false);
-    };
-    const handleError = () => {
-      setHasVideoError(true);
-    };
-
-    video.addEventListener("loadeddata", handleFrameReady);
-    video.addEventListener("canplay", handleFrameReady);
-    video.addEventListener("playing", handleFrameReady);
-    video.addEventListener("error", handleError);
+    const video = videoRef.current;
+    if (!container || !video || hasVideoError) return;
 
     let isIntersecting = false;
     let rafId = 0;
 
     const syncPlaybackState = () => {
       rafId = 0;
-      if (entry.isClaimedByModal) return;
-
       const shouldPlay = isIntersecting && !isCardMostlyCovered(container);
+
       if (shouldPlay) {
-        if (video.parentElement !== host) {
-          host.appendChild(video);
-        }
         if (video.paused) {
           video.play().catch(() => {});
         }
@@ -134,12 +102,12 @@ export const ProjectPreviewCard = memo(function ProjectPreviewCard({
 
     const observer = new IntersectionObserver(
       (entries) => {
-        const first = entries[0];
-        if (!first) return;
-        isIntersecting = first.isIntersecting;
+        const entry = entries[0];
+        if (!entry) return;
+        isIntersecting = entry.isIntersecting;
         syncPlaybackState();
       },
-      { rootMargin: "150px 0px", threshold: 0.1 },
+      { rootMargin: "120px 0px", threshold: 0.1 },
     );
 
     observer.observe(container);
@@ -153,19 +121,17 @@ export const ProjectPreviewCard = memo(function ProjectPreviewCard({
       if (rafId !== 0) {
         window.cancelAnimationFrame(rafId);
       }
-      video.removeEventListener("loadeddata", handleFrameReady);
-      video.removeEventListener("canplay", handleFrameReady);
-      video.removeEventListener("playing", handleFrameReady);
-      video.removeEventListener("error", handleError);
     };
-  }, [item.previewVideoUrl, modalClaimed]);
+  }, [hasVideoError, item.previewVideoUrl]);
 
   const handleRetryPreview = () => {
     setHasVideoError(false);
     setHasFirstFrame(false);
-    const entry = getSharedVideoEntry(item.previewVideoUrl);
-    entry.element.load();
-    entry.element.play().catch(() => {});
+    const el = videoRef.current;
+    if (el) {
+      el.load();
+      el.play().catch(() => {});
+    }
   };
 
   const drawerPositionClass =
@@ -178,8 +144,6 @@ export const ProjectPreviewCard = memo(function ProjectPreviewCard({
       ref={containerRef}
       role="button"
       tabIndex={0}
-      onMouseEnter={() => prioritizePoolVideo(item.fullVideoUrl)}
-      onTouchStart={() => prioritizePoolVideo(item.fullVideoUrl)}
       onClick={() => onSelect(item)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -228,11 +192,18 @@ export const ProjectPreviewCard = memo(function ProjectPreviewCard({
 
       {/* 2. KHUNG VIDEO PREVIEW CHÍNH (Z-10) */}
       <div className="relative z-10 h-full w-full overflow-clip border border-[var(--border-strong)] bg-[#08080a] transition-colors duration-200 group-hover:border-[var(--accent)] group-focus-visible:border-[var(--accent)]">
-        <div
-          ref={videoHostRef}
-          className={`h-full w-full transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.03] ${
-            hasFirstFrame ? "opacity-100" : "opacity-0"
-          }`}
+        <video
+          ref={videoRef}
+          src={item.previewVideoUrl}
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          onLoadedData={() => setHasFirstFrame(true)}
+          onCanPlay={() => setHasFirstFrame(true)}
+          onPlaying={() => setHasFirstFrame(true)}
+          onError={() => setHasVideoError(true)}
+          className="h-full w-full object-cover object-center transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.03]"
         />
 
         {!hasFirstFrame && !hasVideoError && (

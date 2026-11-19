@@ -4,15 +4,12 @@ import { AboutSection } from "@/components/sections/AboutSection";
 import { ProjectsShowcase } from "@/components/sections/ProjectsShowcase";
 import { FilmstripOverviewSection } from "@/components/sections/FilmstripOverviewSection";
 import { SkillsSection } from "@/components/sections/SkillsSection";
-import { VideoWarmupTrigger } from "@/components/ui/VideoWarmupTrigger";
 
 export default function HomePage() {
   return (
     <>
       <SplashScreen />
       <Header />
-
-      <VideoWarmupTrigger />
 
       <main className="relative w-full">
         {/* Section mở màn nền (z-0, curtain="base") */}

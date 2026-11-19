@@ -1,54 +1,28 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CRITICAL_ASSETS, type PreloadAssetItem } from "@/constants/assets";
+import { PORTRAIT_ASSET } from "@/constants/assets";
 import { SPLASH_COPY } from "@/constants/splash";
 
-const ASSET_TIMEOUT_MS = 3500;
+const IMAGE_TIMEOUT_MS = 3000;
 
-function probeSingleAsset(item: PreloadAssetItem): Promise<void> {
+function preloadPortrait(src: string): Promise<void> {
   return new Promise((resolve) => {
     let settled = false;
-
-    if (item.type === "image") {
-      const img = new window.Image();
-      const finishImg = () => {
-        if (settled) return;
-        settled = true;
-        window.clearTimeout(timer);
-        img.onload = null;
-        img.onerror = null;
-        resolve();
-      };
-      const timer = window.setTimeout(finishImg, ASSET_TIMEOUT_MS);
-      img.onload = finishImg;
-      img.onerror = finishImg;
-      img.src = item.src;
-      return;
-    }
-
-    const video = document.createElement("video");
-    video.preload = "auto";
-    video.muted = true;
-    video.playsInline = true;
-
-    const finishVideo = () => {
+    const finish = () => {
       if (settled) return;
       settled = true;
       window.clearTimeout(timer);
-      video.onloadeddata = null;
-      video.onerror = null;
-      // Giải phóng bộ giải mã & ngắt kết nối ngầm sau khi đã đệm xong khung đầu
-      video.pause();
-      video.removeAttribute("src");
-      video.load();
+      img.onload = null;
+      img.onerror = null;
       resolve();
     };
 
-    const timer = window.setTimeout(finishVideo, ASSET_TIMEOUT_MS);
-    video.onloadeddata = finishVideo;
-    video.onerror = finishVideo;
-    video.src = item.src;
+    const timer = window.setTimeout(finish, IMAGE_TIMEOUT_MS);
+    const img = new window.Image();
+    img.onload = finish;
+    img.onerror = finish;
+    img.src = src;
   });
 }
 
@@ -63,7 +37,7 @@ export function useAssetPreloader() {
     let isCancelled = false;
     let rafId = 0;
 
-    const totalTasks = CRITICAL_ASSETS.length + 1;
+    const totalTasks = 2; // 1: Fonts, 2: Portrait Image
     let completedTasks = 0;
     let allSettled = false;
     let visualProgress = 0;
@@ -72,48 +46,39 @@ export function useAssetPreloader() {
       statusRef.current.textContent = SPLASH_COPY.fontLoadLabel;
     }
 
-    const markTaskDone = (nextLabel?: string) => {
+    const markTaskDone = (nextLabel: string) => {
       if (isCancelled) return;
       completedTasks += 1;
-      if (statusRef.current && nextLabel) {
+      if (statusRef.current) {
         statusRef.current.textContent = nextLabel;
       }
       if (completedTasks >= totalTasks) {
         allSettled = true;
-        if (statusRef.current) {
-          statusRef.current.textContent = SPLASH_COPY.readyLabel;
-        }
       }
     };
 
-    // 1. Nạp Font chữ Việt hóa thực tế
     if (typeof document !== "undefined" && "fonts" in document) {
       document.fonts.ready
-        .then(() => markTaskDone(CRITICAL_ASSETS[0]?.label))
-        .catch(() => markTaskDone(CRITICAL_ASSETS[0]?.label));
+        .then(() => markTaskDone("ĐANG TẢI HÌNH ẢNH"))
+        .catch(() => markTaskDone("ĐANG TẢI HÌNH ẢNH"));
     } else {
-      markTaskDone(CRITICAL_ASSETS[0]?.label);
+      markTaskDone("ĐANG TẢI HÌNH ẢNH");
     }
 
-    // 2. Nạp đồng thời ảnh bìa & khung hình đầu tiên của 3 video
-    CRITICAL_ASSETS.forEach((asset, index) => {
-      const nextAsset = CRITICAL_ASSETS[index + 1];
-      probeSingleAsset(asset).then(() => {
-        markTaskDone(nextAsset ? nextAsset.label : SPLASH_COPY.readyLabel);
-      });
+    preloadPortrait(PORTRAIT_ASSET.src).then(() => {
+      markTaskDone(SPLASH_COPY.readyLabel);
     });
 
-    // 3. Vòng lặp rAF nội suy thanh tiến trình bằng GPU scale3d
     const tick = () => {
       if (isCancelled) return;
 
       const targetProgress = (completedTasks / totalTasks) * 100;
       const diff = targetProgress - visualProgress;
 
-      if (Math.abs(diff) < 0.25) {
+      if (Math.abs(diff) < 0.3) {
         visualProgress = targetProgress;
       } else {
-        visualProgress += diff * 0.14;
+        visualProgress += diff * 0.16;
       }
 
       const clamped = Math.min(100, Math.max(0, visualProgress));
@@ -131,7 +96,7 @@ export function useAssetPreloader() {
           if (!isCancelled) {
             setIsReadyToExit(true);
           }
-        }, 220);
+        }, 200);
         return;
       }
 
