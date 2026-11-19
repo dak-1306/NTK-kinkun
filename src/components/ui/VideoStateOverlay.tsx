@@ -9,14 +9,12 @@ export type VideoPlaybackStatus = "loading" | "error";
 interface VideoStateOverlayProps {
   status: VideoPlaybackStatus;
   variant?: "compact" | "theater";
-  sceneCode?: string;
   onRetry?: () => void;
 }
 
 export const VideoStateOverlay = memo(function VideoStateOverlay({
   status,
   variant = "compact",
-  sceneCode,
   onRetry,
 }: VideoStateOverlayProps) {
   const isTheater = variant === "theater";
@@ -119,11 +117,7 @@ export const VideoStateOverlay = memo(function VideoStateOverlay({
           className={`font-mono uppercase tracking-[0.2em] text-[var(--accent)] ${
             isTheater ? "text-xs" : "text-[9px]"
           }`}
-        >
-          {sceneCode
-            ? `${sceneCode} // ${PROJECT_UI_LABELS.videoState.errorCode}`
-            : PROJECT_UI_LABELS.videoState.errorCode}
-        </p>
+        ></p>
 
         <p
           className={`font-semibold uppercase tracking-wide text-[var(--text-primary)] ${

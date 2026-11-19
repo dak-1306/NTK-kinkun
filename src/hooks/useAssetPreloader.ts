@@ -9,28 +9,45 @@ const ASSET_TIMEOUT_MS = 3500;
 function probeSingleAsset(item: PreloadAssetItem): Promise<void> {
   return new Promise((resolve) => {
     let settled = false;
-    const finish = () => {
-      if (settled) return;
-      settled = true;
-      window.clearTimeout(timer);
-      resolve();
-    };
-
-    const timer = window.setTimeout(finish, ASSET_TIMEOUT_MS);
 
     if (item.type === "image") {
       const img = new window.Image();
-      img.onload = finish;
-      img.onerror = finish;
+      const finishImg = () => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timer);
+        img.onload = null;
+        img.onerror = null;
+        resolve();
+      };
+      const timer = window.setTimeout(finishImg, ASSET_TIMEOUT_MS);
+      img.onload = finishImg;
+      img.onerror = finishImg;
       img.src = item.src;
       return;
     }
 
     const video = document.createElement("video");
-    video.preload = "metadata";
+    video.preload = "auto";
     video.muted = true;
-    video.onloadedmetadata = finish;
-    video.onerror = finish;
+    video.playsInline = true;
+
+    const finishVideo = () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      video.onloadeddata = null;
+      video.onerror = null;
+      // Giải phóng bộ giải mã & ngắt kết nối ngầm sau khi đã đệm xong khung đầu
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+      resolve();
+    };
+
+    const timer = window.setTimeout(finishVideo, ASSET_TIMEOUT_MS);
+    video.onloadeddata = finishVideo;
+    video.onerror = finishVideo;
     video.src = item.src;
   });
 }
@@ -46,7 +63,6 @@ export function useAssetPreloader() {
     let isCancelled = false;
     let rafId = 0;
 
-    // Tổng số tác vụ = 1 (Fonts) + số lượng CRITICAL_ASSETS
     const totalTasks = CRITICAL_ASSETS.length + 1;
     let completedTasks = 0;
     let allSettled = false;
@@ -79,7 +95,7 @@ export function useAssetPreloader() {
       markTaskDone(CRITICAL_ASSETS[0]?.label);
     }
 
-    // 2. Nạp đồng thời các ảnh bìa & metadata video
+    // 2. Nạp đồng thời ảnh bìa & khung hình đầu tiên của 3 video
     CRITICAL_ASSETS.forEach((asset, index) => {
       const nextAsset = CRITICAL_ASSETS[index + 1];
       probeSingleAsset(asset).then(() => {
@@ -87,7 +103,7 @@ export function useAssetPreloader() {
       });
     });
 
-    // 3. Vòng lặp rAF duy nhất nội suy thanh tiến trình bằng GPU scale3d
+    // 3. Vòng lặp rAF nội suy thanh tiến trình bằng GPU scale3d
     const tick = () => {
       if (isCancelled) return;
 

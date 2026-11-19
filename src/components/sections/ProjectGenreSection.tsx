@@ -17,6 +17,10 @@ interface ProjectGenreSectionProps {
 
 function getGridContainerClass(layout: ProjectGridLayout): string {
   switch (layout) {
+    case "single":
+      return "grid-cols-1 place-items-center";
+    case "duo":
+      return "grid-cols-1 md:grid-cols-2 lg:grid-cols-2 lg:grid-rows-1";
     case "triptych":
       return "grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 lg:grid-rows-1";
     case "featured-right":
@@ -27,8 +31,16 @@ function getGridContainerClass(layout: ProjectGridLayout): string {
 }
 
 function getGridCellClass(layout: ProjectGridLayout, index: number): string {
+  if (layout === "single") {
+    return "aspect-video w-full max-w-[700px]";
+  }
+
+  if (layout === "duo") {
+    return "aspect-video md:aspect-auto md:h-[260px] lg:h-full";
+  }
+
   if (layout === "triptych") {
-    return "aspect-video sm:aspect-auto sm:h-[320px] lg:h-full";
+    return "aspect-video sm:aspect-auto sm:h-[290px] lg:h-full";
   }
 
   if (layout === "featured-left") {
@@ -48,11 +60,10 @@ export const ProjectGenreSection = memo(function ProjectGenreSection({
   data,
   onSelectVideo,
 }: ProjectGenreSectionProps) {
-  // Dành sẵn khoảng trống phía hướng đĩa trượt ra ngoài để đĩa lớn không bị cắt mép
   const discEjectionPadding =
     data.discSide === "right"
-      ? "p-4 pr-12 sm:p-5 sm:pr-16 lg:p-6 lg:pr-24"
-      : "p-4 pl-12 sm:p-5 sm:pl-16 lg:p-6 lg:pl-24";
+      ? "p-3.5 pr-16 sm:p-5 sm:pr-20 lg:p-6 lg:pr-24"
+      : "p-3.5 pl-16 sm:p-5 sm:pl-20 lg:p-6 lg:pl-24";
 
   return (
     <SectionWrapper
@@ -60,28 +71,20 @@ export const ProjectGenreSection = memo(function ProjectGenreSection({
       curtain="stack"
       layer={data.layer}
       backgroundVariant="cinema"
-      innerClassName="justify-center pt-16 pb-6 lg:pt-20 lg:pb-6"
+      innerClassName="items-center justify-center pt-16 pb-6 sm:pt-20 sm:pb-8"
       noPadding
     >
-      <Container className="my-auto">
-        <div className="flex flex-col gap-4 lg:h-[min(74dvh,640px)] lg:flex-row lg:items-stretch lg:gap-6">
-          {/* CỘT TRÁI: CHỈ GIỮ DUY NHẤT TIÊU ĐỀ THỂ LOẠI NẰM DỌC */}
-          <div className="flex shrink-0 items-center border-b border-[var(--border)] pb-3 lg:w-14 lg:justify-center lg:border-r lg:border-b-0 lg:pr-4 lg:pb-0 xl:w-16">
-            <h2 className="text-lg font-bold uppercase tracking-wider text-[var(--text-primary)] sm:text-2xl lg:whitespace-nowrap lg:text-2xl lg:tracking-[0.16em] lg:[writing-mode:vertical-rl] lg:rotate-180">
+      <Container className="my-auto flex items-center justify-center">
+        <div className="flex w-full max-w-[1160px] flex-col gap-4 lg:h-[min(64dvh,540px)] lg:flex-row lg:items-center lg:justify-center lg:gap-8">
+          {/* CỘT TRÁI: TIÊU ĐỀ THỂ LOẠI CĂN GIỮA CÂN ĐỐI */}
+          <div className="flex shrink-0 items-center justify-center border-b border-[var(--border)] pb-3 text-center lg:h-full lg:w-16 lg:border-r lg:border-b-0 lg:pr-5 lg:pb-0">
+            <h2 className="text-base font-bold tracking-wider text-[var(--text-primary)] sm:text-xl lg:whitespace-nowrap lg:text-2xl lg:tracking-[0.16em] lg:[writing-mode:vertical-rl] lg:rotate-180">
               {data.genreTitle}
             </h2>
           </div>
 
-          {/* CỘT PHẢI: DÒNG CHỮ MỜ TRÊN GÓC PHẢI + KHUNG CHIẾU VIDEO RỘNG TỐI ĐA */}
-          <div className="flex min-w-0 flex-1 flex-col">
-            {/* Dòng text phụ nằm bên phải phía trên khung preview */}
-            <div className="mb-2.5 flex justify-end">
-              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--text-secondary)] sm:text-[11px]">
-                {data.genreSub}
-              </span>
-            </div>
-
-            {/* Khung chiếu phim lớn */}
+          {/* CỘT PHẢI: KHUNG CHIẾU VIDEO CÂN ĐỐI */}
+          <div className="flex min-w-0 flex-1 flex-col lg:h-full">
             <div
               className={`relative flex flex-1 flex-col border border-[var(--border-strong)] bg-[#060608]/90 ${discEjectionPadding}`}
             >
@@ -103,9 +106,9 @@ export const ProjectGenreSection = memo(function ProjectGenreSection({
                 className="pointer-events-none absolute -bottom-[1px] -right-[1px] h-2.5 w-2.5 border-b-2 border-r-2 border-[var(--accent)]"
               />
 
-              {/* Lưới các ô preview với khoảng cách rộng rãi hơn */}
+              {/* Lưới các ô preview */}
               <div
-                className={`grid flex-1 gap-4 sm:gap-5 lg:gap-6 ${getGridContainerClass(
+                className={`grid flex-1 gap-4 sm:gap-5 lg:gap-7 ${getGridContainerClass(
                   data.layoutVariant,
                 )}`}
               >

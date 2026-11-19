@@ -1,15 +1,21 @@
-export type ProjectGridLayout = "featured-left" | "triptych" | "featured-right";
+export type ProjectGridLayout =
+  | "single"
+  | "duo"
+  | "featured-left"
+  | "triptych"
+  | "featured-right";
 
-export type DiscSlideDirection = "right" | "left";
+export type DiscSlideDirection = "left" | "right";
 
 export interface ProjectVideoItem {
   id: string;
-  sceneCode: string;
+
   title: string;
-  duration: string;
-  year: string;
+
   previewVideoUrl: string;
   fullVideoUrl: string;
+  /** Đường dẫn Google Drive lưu bản gốc chất lượng cao (tùy chọn) */
+  driveUrl?: string;
   isFeatured?: boolean;
 }
 
@@ -18,7 +24,6 @@ export interface ProjectGenreSectionData {
   layer: number;
   indexCode: string;
   genreTitle: string;
-  genreSub: string;
   layoutVariant: ProjectGridLayout;
   discSide: DiscSlideDirection;
   items: readonly ProjectVideoItem[];

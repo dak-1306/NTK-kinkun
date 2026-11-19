@@ -10,11 +10,26 @@ export function Header() {
   useEffect(() => {
     let rafId = 0;
     let lastIndex = 0;
+    let maxScroll = Math.max(
+      0,
+      document.documentElement.scrollHeight - window.innerHeight,
+    );
+
+    const sections = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-section-wrapper='true']"),
+    );
+
+    const updateMetrics = () => {
+      maxScroll = Math.max(
+        0,
+        document.documentElement.scrollHeight - window.innerHeight,
+      );
+    };
 
     const syncProgressAndNodes = () => {
-      // 1. Cập nhật thanh tiến trình mượt 120 FPS bằng GPU scale3d
-      const doc = document.documentElement;
-      const maxScroll = doc.scrollHeight - window.innerHeight;
+      rafId = 0;
+
+      // 1. Cập nhật thanh tiến trình bằng GPU scale3d
       const ratio =
         maxScroll > 0
           ? Math.min(1, Math.max(0, window.scrollY / maxScroll))
@@ -24,12 +39,8 @@ export function Header() {
         progressRef.current.style.transform = `scale3d(${ratio}, 1, 1)`;
       }
 
-      // 2. Dò section có z-index cao nhất tại điểm neo y = 120px để sáng đúng node
+      // 2. Dò section có z-index cao nhất tại điểm neo y = 120px
       const probeY = 120;
-      const sections = document.querySelectorAll<HTMLElement>(
-        "[data-section-wrapper='true']",
-      );
-
       let highestZ = -1;
       let currentSectionId = "";
 
@@ -54,12 +65,31 @@ export function Header() {
           setActiveIndex(foundIdx);
         }
       }
+    };
 
+    const scheduleSync = () => {
+      if (rafId !== 0) return;
       rafId = window.requestAnimationFrame(syncProgressAndNodes);
     };
 
-    rafId = window.requestAnimationFrame(syncProgressAndNodes);
-    return () => window.cancelAnimationFrame(rafId);
+    const handleResize = () => {
+      updateMetrics();
+      scheduleSync();
+    };
+
+    // Đồng bộ lần đầu khi mount
+    scheduleSync();
+
+    window.addEventListener("scroll", scheduleSync, { passive: true });
+    window.addEventListener("resize", handleResize, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", scheduleSync);
+      window.removeEventListener("resize", handleResize);
+      if (rafId !== 0) {
+        window.cancelAnimationFrame(rafId);
+      }
+    };
   }, []);
 
   const currentNode = NAV_DATA.nodes[activeIndex] ?? NAV_DATA.nodes[0];

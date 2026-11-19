@@ -32,11 +32,11 @@ export const StageBackground = memo(function StageBackground({
           }}
         />
 
-        {/* 2. GÓC TRÊN BÊN TRÁI: ĐÈN QUAY PHIM FRESNEL STUDIO */}
-        <StudioLightProp className="absolute top-12 left-2 w-[230px] opacity-65 sm:top-14 sm:left-6 sm:w-[290px] lg:w-[330px]" />
+        {/* 2. GÓC TRÊN BÊN TRÁI: ĐÈN QUAY PHIM FRESNEL STUDIO (ẨN TRÊN MOBILE) */}
+        <StudioLightProp className="absolute top-14 left-6 hidden w-[290px] opacity-65 lg:block lg:w-[330px]" />
 
-        {/* 3. GÓC DƯỚI BÊN TRÁI: MÁY QUAY PHIM 35MM CINEMA RIG */}
-        <CinemaCameraProp className="absolute bottom-4 left-2 w-[240px] opacity-65 sm:bottom-6 sm:left-6 sm:w-[300px] lg:w-[340px]" />
+        {/* 3. GÓC DƯỚI BÊN TRÁI: MÁY QUAY PHIM 35MM CINEMA RIG (ẨN TRÊN MOBILE) */}
+        <CinemaCameraProp className="absolute bottom-6 left-6 hidden w-[300px] opacity-65 lg:block lg:w-[340px]" />
 
         {/* 4. BÊN PHẢI: CHÍNH XÁC 1 NỬA ĐĨA CV XOAY TINH TẾ */}
         <div className="absolute top-1/2 right-0 translate-x-1/2 -translate-y-1/2 opacity-45 sm:opacity-55">
@@ -61,7 +61,7 @@ export const StageBackground = memo(function StageBackground({
       aria-hidden="true"
       className="pointer-events-none absolute inset-0 -z-10 overflow-clip bg-[#050505]"
     >
-      {/* 1. DẢI NEO ĐỎ THẪM DỌC BÊN TRÁI TẠO ĐIỂM TỰA CHO TIÊU ĐỀ THỂ LOẠI */}
+      {/* 1. DẢI NEO ĐỎ THẪM DỌC BÊN TRÁI */}
       <div
         className="absolute inset-y-0 left-0 w-[220px] sm:w-[320px] lg:w-[380px]"
         style={{
@@ -71,7 +71,7 @@ export const StageBackground = memo(function StageBackground({
       />
       <div className="absolute inset-y-0 left-0 w-[2px] bg-[var(--accent)]/65" />
 
-      {/* 2. LƯỚI KHUNG NGẮM PHÒNG TỐI 1PX (TÔN TỐI ĐA MÀU SẮC VIDEO) */}
+      {/* 2. LƯỚI KHUNG NGẮM PHÒNG TỐI 1PX */}
       <div
         className="absolute inset-0"
         style={{
@@ -81,7 +81,7 @@ export const StageBackground = memo(function StageBackground({
         }}
       />
 
-      {/* 3. DẢI RĂNG CƯA PHIM 35MM TRƯỢT DỌC CỰC MẢNH Ở SÁT MÉP PHẢI */}
+      {/* 3. DẢI RĂNG CƯA PHIM 35MM TRƯỢT DỌC Ở SÁT MÉP PHẢI */}
       <div className="absolute inset-y-0 right-2 hidden w-4 sm:block lg:right-4">
         <div className="absolute inset-y-0 left-0 w-[1px] bg-white/[0.08]" />
         <div className="absolute inset-y-0 right-0 w-[1px] bg-white/[0.08]" />

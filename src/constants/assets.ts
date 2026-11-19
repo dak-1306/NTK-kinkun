@@ -5,6 +5,21 @@ export interface PreloadAssetItem {
   type: "image" | "video-meta";
 }
 
+const MEDIA_CDN_BASE = (process.env.NEXT_PUBLIC_MEDIA_CDN_URL ?? "").replace(
+  /\/$/,
+  "",
+);
+
+/**
+ * Ghép đường dẫn file với GitHub Releases CDN.
+ * Nếu truyền sẵn URL đầy đủ (https://...) sẽ giữ nguyên.
+ */
+export function getMediaUrl(path: string): string {
+  if (/^https?:\/\//i.test(path)) return path;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return MEDIA_CDN_BASE ? `${MEDIA_CDN_BASE}${normalizedPath}` : normalizedPath;
+}
+
 export const PORTRAIT_ASSET = {
   src: "/media/posters/portrait.webp",
   alt: "Chân dung Nguyễn Trung Kiên",
@@ -20,8 +35,20 @@ export const CRITICAL_ASSETS: readonly PreloadAssetItem[] = [
   },
   {
     id: "video-meta-01",
-    label: "ĐANG ĐỒNG BỘ DỮ LIỆU PHIM",
-    src: "/media/videos/projects/project-01.mp4",
+    label: "ĐANG NẠP CUỘN PHIM 01",
+    src: getMediaUrl("/badchoices.45.mp4"),
+    type: "video-meta",
+  },
+  {
+    id: "video-meta-02",
+    label: "ĐANG NẠP CUỘN PHIM 02",
+    src: getMediaUrl("/final.mp4"),
+    type: "video-meta",
+  },
+  {
+    id: "video-meta-03",
+    label: "ĐANG NẠP CUỘN PHIM MV",
+    src: getMediaUrl("/the.Daki.team.mp4"),
     type: "video-meta",
   },
 ] as const;

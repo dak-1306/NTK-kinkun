@@ -4,8 +4,10 @@ import { UI_LABELS } from "@/constants/ui";
 
 interface CinemaButtonProps {
   label?: string;
-  size?: "md" | "lg";
+  size?: "sm" | "md" | "lg";
   isActive?: boolean;
+  href?: string;
+  download?: string;
   onClick?: () => void;
   type?: "button" | "submit";
   className?: string;
@@ -16,22 +18,29 @@ export function CinemaButton({
   label,
   size = "md",
   isActive = false,
+  href,
+  download,
   onClick,
   type = "button",
   className = "",
   ariaLabel,
 }: CinemaButtonProps) {
   const discSizeClass =
-    size === "lg" ? "h-20 w-20 sm:h-24 sm:w-24" : "h-16 w-16 sm:h-20 sm:w-20";
+    size === "lg"
+      ? "h-20 w-20 sm:h-24 sm:w-24"
+      : size === "sm"
+        ? "h-9 w-9 sm:h-10 sm:w-10"
+        : "h-16 w-16 sm:h-20 sm:w-20";
 
-  return (
-    <button
-      type={type}
-      onClick={onClick}
-      aria-pressed={isActive}
-      aria-label={ariaLabel ?? label ?? UI_LABELS.button.nextSection}
-      className={`group inline-flex cursor-pointer items-center gap-4 rounded-full focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)] ${className}`}
-    >
+  const layoutClass = size === "sm" ? "gap-2.5 pr-1" : "gap-4";
+
+  const labelSizeClass =
+    size === "sm" ? "text-[11px] sm:text-xs" : "text-xs sm:text-sm";
+
+  const sharedClassName = `group inline-flex cursor-pointer items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)] ${layoutClass} ${className}`;
+
+  const buttonContent = (
+    <>
       {/* ĐĨA CV TRÒN THUẦN TÚY (KHÔNG ICON THỪA Ở TÂM) */}
       <span
         className={`relative inline-flex shrink-0 items-center justify-center overflow-clip rounded-full border transition-colors duration-200 ${discSizeClass} ${
@@ -98,10 +107,41 @@ export function CinemaButton({
 
       {/* Nhãn hành động bên cạnh */}
       {label && (
-        <span className="font-mono text-xs font-medium uppercase tracking-[0.2em] text-[var(--text-secondary)] transition-colors duration-150 group-hover:text-[var(--text-primary)] sm:text-sm">
+        <span
+          className={`font-mono font-medium uppercase tracking-[0.2em] text-[var(--text-secondary)] transition-colors duration-150 group-hover:text-[var(--text-primary)] ${labelSizeClass}`}
+        >
           {label}
         </span>
       )}
+    </>
+  );
+
+  if (href) {
+    const isExternal = /^https?:\/\//i.test(href);
+    return (
+      <a
+        href={href}
+        target={isExternal ? "_blank" : undefined}
+        rel={isExternal ? "noopener noreferrer" : undefined}
+        download={download}
+        onClick={onClick}
+        aria-label={ariaLabel ?? label ?? UI_LABELS.button.nextSection}
+        className={sharedClassName}
+      >
+        {buttonContent}
+      </a>
+    );
+  }
+
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      aria-pressed={isActive}
+      aria-label={ariaLabel ?? label ?? UI_LABELS.button.nextSection}
+      className={sharedClassName}
+    >
+      {buttonContent}
     </button>
   );
 }

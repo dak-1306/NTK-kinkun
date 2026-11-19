@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { TvStaticBackdrop } from "./TvStaticBackdrop";
 import { VideoStateOverlay } from "./VideoStateOverlay";
+import { CinemaButton } from "./CinemaButton";
 import { PROJECT_UI_LABELS } from "@/constants/projects";
 import type { ProjectVideoItem } from "@/types/project";
 
@@ -29,11 +30,49 @@ function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const progressBarRef = useRef<HTMLDivElement | null>(null);
   const timecodeRef = useRef<HTMLSpanElement | null>(null);
+  const bufferingTimerRef = useRef<number>(0);
 
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
-  const [isBuffering, setIsBuffering] = useState(true);
+  const [isBuffering, setIsBuffering] = useState(false);
   const [hasMediaError, setHasMediaError] = useState(false);
+
+  const scheduleBufferingOverlay = useCallback((delayMs = 220) => {
+    window.clearTimeout(bufferingTimerRef.current);
+    bufferingTimerRef.current = window.setTimeout(() => {
+      const el = videoRef.current;
+      if (el && el.readyState < 3) {
+        setIsBuffering(true);
+      }
+    }, delayMs);
+  }, []);
+
+  const clearBufferingOverlay = useCallback(() => {
+    window.clearTimeout(bufferingTimerRef.current);
+    setIsBuffering(false);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      window.clearTimeout(bufferingTimerRef.current);
+    };
+  }, []);
+
+  // Tạm dừng toàn bộ video preview nền khi mở phòng chiếu để dồn 100% băng thông & GPU cho video chính
+  useEffect(() => {
+    const allVideos = Array.from(document.querySelectorAll("video"));
+    const pausedBackgroundVideos = allVideos.filter(
+      (el) => el !== videoRef.current && !el.paused,
+    );
+
+    pausedBackgroundVideos.forEach((el) => el.pause());
+
+    return () => {
+      pausedBackgroundVideos.forEach((el) => {
+        el.play().catch(() => {});
+      });
+    };
+  }, []);
 
   // Khóa cuộn trang & gắn phím tắt ESC / Space
   useEffect(() => {
@@ -63,7 +102,7 @@ function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
     };
   }, [onClose]);
 
-  // Vòng lặp rAF duy nhất cập nhật thanh tiến trình video bằng GPU scale3d
+  // Vòng lặp rAF cập nhật thanh tiến trình video bằng GPU scale3d
   useEffect(() => {
     let rafId = 0;
 
@@ -99,6 +138,14 @@ function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
     }
   };
 
+  const handleOpenDrive = () => {
+    const el = videoRef.current;
+    if (el && !el.paused) {
+      el.pause();
+      setIsPlaying(false);
+    }
+  };
+
   const toggleMute = () => {
     const el = videoRef.current;
     if (!el) return;
@@ -108,12 +155,12 @@ function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
 
   const handleRetryVideo = () => {
     setHasMediaError(false);
-    setIsBuffering(true);
+    scheduleBufferingOverlay(0);
     const el = videoRef.current;
     if (el) {
       el.load();
       el.play().catch(() => {
-        setIsBuffering(false);
+        clearBufferingOverlay();
       });
     }
   };
@@ -140,14 +187,13 @@ function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
       <TvStaticBackdrop intensity="normal" />
 
       {/* 2. THANH TIÊU ĐỀ PHÒNG CHIẾU */}
-      <div className="relative z-10 mx-auto flex w-full max-w-[1240px] items-center justify-between border-b border-[var(--border)] pb-3.5">
-        <div className="flex items-center gap-3">
-          <span className="h-2 w-2 bg-[var(--accent)]" />
-          <span className="font-mono text-xs tracking-[0.18em] text-[var(--accent)]">
-            {video.sceneCode}
-          </span>
-          <span className="text-[var(--border-strong)]">/</span>
-          <h2 className="truncate text-sm font-semibold uppercase tracking-wide text-[var(--text-primary)] sm:text-base">
+      <div className="relative z-10 mx-auto flex w-full max-w-[1240px] items-start justify-between gap-4 border-b border-[var(--border)] pb-3.5">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 font-mono text-[11px] tracking-[0.18em] text-[var(--accent)]">
+            <span className="h-2 w-2 shrink-0 bg-[var(--accent)]" />
+          </div>
+
+          <h2 className="mt-1.5 text-sm font-semibold uppercase leading-snug tracking-wide text-[var(--text-primary)] break-words sm:text-base lg:text-lg">
             {video.title}
           </h2>
         </div>
@@ -156,7 +202,7 @@ function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
           type="button"
           onClick={onClose}
           aria-label={PROJECT_UI_LABELS.modal.closeAriaLabel}
-          className="inline-flex h-9 cursor-pointer items-center gap-2 border border-[var(--border-strong)] bg-[#0a0a0d] px-3.5 font-mono text-xs uppercase tracking-[0.18em] text-[var(--text-primary)] transition-colors duration-150 hover:border-[var(--accent)] hover:bg-[var(--accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+          className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 border border-[var(--border-strong)] bg-[#0a0a0d] px-3.5 font-mono text-xs uppercase tracking-[0.18em] text-[var(--text-primary)] transition-colors duration-150 hover:border-[var(--accent)] hover:bg-[var(--accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
         >
           <span>{PROJECT_UI_LABELS.modal.closeLabel}</span>
           <X className="h-3.5 w-3.5" />
@@ -165,23 +211,26 @@ function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
 
       {/* 3. KHUNG MÀN CHIẾU CHÍNH */}
       <div className="relative z-10 mx-auto my-auto flex w-full max-w-[1240px] flex-col items-center justify-center">
-        <div className="relative aspect-video max-h-[70dvh] w-full overflow-clip border border-[var(--border-strong)] bg-black">
+        <div className="relative aspect-video max-h-[60dvh] w-full overflow-clip border border-[var(--border-strong)] bg-black sm:max-h-[64dvh]">
           <video
             ref={videoRef}
             src={video.fullVideoUrl}
+            poster={video.previewVideoUrl}
             autoPlay
             playsInline
+            preload="auto"
             onClick={togglePlay}
-            onLoadStart={() => setIsBuffering(true)}
-            onWaiting={() => setIsBuffering(true)}
-            onCanPlay={() => setIsBuffering(false)}
+            onLoadStart={() => scheduleBufferingOverlay(220)}
+            onWaiting={() => scheduleBufferingOverlay(350)}
+            onLoadedData={clearBufferingOverlay}
+            onCanPlay={clearBufferingOverlay}
             onPlaying={() => {
-              setIsBuffering(false);
+              clearBufferingOverlay();
               setIsPlaying(true);
             }}
             onPause={() => setIsPlaying(false)}
             onError={() => {
-              setIsBuffering(false);
+              clearBufferingOverlay();
               setHasMediaError(true);
             }}
             className="h-full w-full cursor-pointer object-contain"
@@ -195,7 +244,6 @@ function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
             <VideoStateOverlay
               status="error"
               variant="theater"
-              sceneCode={video.sceneCode}
               onRetry={handleRetryVideo}
             />
           )}
@@ -221,8 +269,8 @@ function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
           />
         </div>
 
-        <div className="flex items-center justify-between font-mono text-xs tracking-[0.16em]">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 font-mono text-xs tracking-[0.16em]">
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3.5">
             <button
               type="button"
               onClick={togglePlay}
@@ -262,14 +310,21 @@ function ScreeningPlayer({ video, onClose }: ScreeningPlayerProps) {
                 </>
               )}
             </button>
+
+            {video.driveUrl && (
+              <CinemaButton
+                size="sm"
+                href={video.driveUrl}
+                label={PROJECT_UI_LABELS.modal.driveLabel}
+                ariaLabel={PROJECT_UI_LABELS.modal.driveAriaLabel}
+                onClick={handleOpenDrive}
+              />
+            )}
           </div>
 
           <div className="flex items-center gap-4 text-[var(--text-secondary)]">
-            <span className="hidden text-[10px] md:inline">
+            <span className="hidden text-[10px] lg:inline">
               {PROJECT_UI_LABELS.modal.shortcutHint}
-            </span>
-            <span ref={timecodeRef} className="text-[var(--text-primary)]">
-              00:00 / {video.duration}
             </span>
           </div>
         </div>

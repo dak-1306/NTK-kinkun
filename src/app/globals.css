@@ -335,7 +335,7 @@ body {
   will-change: transform;
 }
 
-/* Hiệu ứng đĩa CV ẩn hoàn toàn sau khung video, chỉ trượt ra ngoài khi hover (100% GPU) */
+/* Hiệu ứng đĩa CV ẩn sau khung video trên PC, trượt ra ngoài khi hover; trên mobile hiển thị sẵn */
 .disc-drawer-right {
   opacity: 0;
   transform: translate3d(-18%, -50%, 0);
@@ -348,7 +348,7 @@ body {
 .group:hover .disc-drawer-right,
 .group:focus-visible .disc-drawer-right {
   opacity: 1;
-  transform: translate3d(48%, -50%, 0);
+  transform: translate3d(44%, -50%, 0);
 }
 
 .disc-drawer-left {
@@ -363,7 +363,20 @@ body {
 .group:hover .disc-drawer-left,
 .group:focus-visible .disc-drawer-left {
   opacity: 1;
-  transform: translate3d(-48%, -50%, 0);
+  transform: translate3d(-44%, -50%, 0);
+}
+
+/* Thiết bị cảm ứng / mobile không có hover: hiển thị luôn đĩa xoay ngay từ đầu */
+@media (hover: none), (pointer: coarse) {
+  .disc-drawer-right {
+    opacity: 1;
+    transform: translate3d(42%, -50%, 0);
+  }
+
+  .disc-drawer-left {
+    opacity: 1;
+    transform: translate3d(-42%, -50%, 0);
+  }
 }
 
 /* ==========================================================================
@@ -486,4 +499,40 @@ body {
 .animate-crt-glitch-2 {
   animation: crt-glitch-bar-alt 4.9s steps(1) infinite;
   will-change: transform, opacity;
+}
+
+/* =========================================================
+   CUSTOM THANH CUỘN TOÀN TRANG (CINEMA HUD SCROLLBAR)
+   ========================================================= */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: #b8041c #050505;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #050505;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #990315;
+  border-radius: 0;
+  transition: background-color 150ms ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent, #d90429);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: #ff2a4b;
+}
+
+::-webkit-scrollbar-corner {
+  background: #050505;
 }

@@ -1,3 +1,4 @@
+import { getMediaUrl } from "./assets";
 import type { ProjectGenreSectionData } from "@/types/project";
 
 export const PROJECT_UI_LABELS = {
@@ -18,124 +19,71 @@ export const PROJECT_UI_LABELS = {
     unmuteLabel: "BẬT TIẾNG",
     playLabel: "PHÁT",
     pauseLabel: "TẠM DỪNG",
+    driveLabel: "BẢN GỐC DRIVE",
+    driveShortLabel: "DRIVE",
+    driveAriaLabel: "Mở video bản gốc trên Google Drive trong tab mới",
     shortcutHint: "NHẤN ESC ĐỂ THOÁT • SPACE ĐỂ TẠM DỪNG",
     sliderAriaLabel: "Thanh tua tiến trình video",
   },
 } as const;
 
+const VIDEO_BADCHOICES = getMediaUrl("/badchoices.45.mp4");
+const VIDEO_FINAL = getMediaUrl("/final.mp4");
+const VIDEO_DAKI = getMediaUrl("/the.Daki.team.mp4");
+
+const DRIVE_BADCHOICES =
+  "https://drive.google.com/file/d/1M4baBZaZyAdW2DZ9b34Sl11-1fHN2euk/view?usp=drive_link";
+const DRIVE_FINAL =
+  "https://drive.google.com/file/d/1n5Yib6md7b9L1cBFICAMy9XTlg-IqTxb/view?usp=drive_link";
+const DRIVE_DAKI =
+  "https://drive.google.com/file/d/1R9yU3YUBBzHKtOwlAbwOjm4cBcmDjnP5/view?usp=drive_link";
+
 export const PROJECT_GENRES: readonly ProjectGenreSectionData[] = [
   {
     id: "project-01",
     layer: 1,
-    indexCode: "02 // CUỘN 01",
-    genreTitle: "PHIM NGẮN & KỂ CHUYỆN",
-    genreSub: "TRUYỆN NGẮN & KỂ CHUYỆN BẰNG HÌNH ẢNH",
-    layoutVariant: "featured-left",
+    indexCode: "02",
+    genreTitle: "iTVC",
+    layoutVariant: "duo",
     discSide: "right",
     items: [
       {
         id: "p1-01",
-        sceneCode: "CẢNH 01",
-        title: "NHỊP THỞ ĐÊM",
-        duration: "03:45",
-        year: "2026",
-        previewVideoUrl: "/media/videos/projects/project-01.mp4",
-        fullVideoUrl: "/media/videos/projects/project-01.mp4",
+
+        title: "BAD CHOICES",
+
+        previewVideoUrl: VIDEO_BADCHOICES,
+        fullVideoUrl: VIDEO_BADCHOICES,
+        driveUrl: DRIVE_BADCHOICES,
         isFeatured: true,
       },
       {
         id: "p1-02",
-        sceneCode: "CẢNH 02",
-        title: "KHOẢNG LẶNG SÀI GÒN",
-        duration: "02:18",
-        year: "2025",
-        previewVideoUrl: "/media/videos/projects/project-02.mp4",
-        fullVideoUrl: "/media/videos/projects/project-02.mp4",
-      },
-      {
-        id: "p1-03",
-        sceneCode: "CẢNH 03",
-        title: "ÁNH ĐÈN HẬU",
-        duration: "04:10",
-        year: "2025",
-        previewVideoUrl: "/media/videos/projects/project-03.mp4",
-        fullVideoUrl: "/media/videos/projects/project-03.mp4",
+
+        title: "FINAL CUT",
+
+        previewVideoUrl: VIDEO_FINAL,
+        fullVideoUrl: VIDEO_FINAL,
+        driveUrl: DRIVE_FINAL,
       },
     ],
   },
   {
-    id: "project-02",
+    id: "project-mv",
     layer: 2,
-    indexCode: "03 // CUỘN 02",
-    genreTitle: "TVC & THƯƠNG MẠI",
-    genreSub: "QUẢNG CÁO & PHIM THƯƠNG HIỆU",
-    layoutVariant: "triptych",
-    discSide: "right",
-    items: [
-      {
-        id: "p2-01",
-        sceneCode: "CẢNH 01",
-        title: "CHUYỂN ĐỘNG THÉP",
-        duration: "01:15",
-        year: "2026",
-        previewVideoUrl: "/media/videos/projects/project-02.mp4",
-        fullVideoUrl: "/media/videos/projects/project-02.mp4",
-      },
-      {
-        id: "p2-02",
-        sceneCode: "CẢNH 02",
-        title: "SẮC ĐỎ NGUYÊN BẢN",
-        duration: "00:45",
-        year: "2026",
-        previewVideoUrl: "/media/videos/projects/project-01.mp4",
-        fullVideoUrl: "/media/videos/projects/project-01.mp4",
-      },
-      {
-        id: "p2-03",
-        sceneCode: "CẢNH 03",
-        title: "NHỊP ĐIỆU ĐÔ THỊ",
-        duration: "01:30",
-        year: "2025",
-        previewVideoUrl: "/media/videos/projects/project-03.mp4",
-        fullVideoUrl: "/media/videos/projects/project-03.mp4",
-      },
-    ],
-  },
-  {
-    id: "project-03",
-    layer: 3,
-    indexCode: "04 // CUỘN 03",
-    genreTitle: "MV & NGHỆ THUẬT THỊ GIÁC",
-    genreSub: "VIDEO ÂM NHẠC & THỬ NGHIỆM THỊ GIÁC",
-    layoutVariant: "featured-right",
+    indexCode: "03",
+    genreTitle: "MV",
+    layoutVariant: "single",
     discSide: "left",
     items: [
       {
-        id: "p3-01",
-        sceneCode: "CẢNH 01",
-        title: "BÓNG TỐI & ÁNH SÁNG",
-        duration: "03:20",
-        year: "2026",
-        previewVideoUrl: "/media/videos/projects/project-03.mp4",
-        fullVideoUrl: "/media/videos/projects/project-03.mp4",
-      },
-      {
-        id: "p3-02",
-        sceneCode: "CẢNH 02",
-        title: "VỆT SÁNG ĐÊM",
-        duration: "02:50",
-        year: "2025",
-        previewVideoUrl: "/media/videos/projects/project-01.mp4",
-        fullVideoUrl: "/media/videos/projects/project-01.mp4",
-      },
-      {
-        id: "p3-03",
-        sceneCode: "CẢNH 03",
-        title: "DƯ ÂM KHUNG HÌNH",
-        duration: "04:05",
-        year: "2026",
-        previewVideoUrl: "/media/videos/projects/project-02.mp4",
-        fullVideoUrl: "/media/videos/projects/project-02.mp4",
+        id: "mv-01",
+
+        title: "THE DAKI TEAM",
+
+        previewVideoUrl: VIDEO_DAKI,
+        fullVideoUrl: VIDEO_DAKI,
+        driveUrl: DRIVE_DAKI,
         isFeatured: true,
       },
     ],

@@ -32,6 +32,14 @@ export default function RootLayout({
       lang="vi"
       className={`${beVietnamPro.variable} ${jetbrainsMono.variable}`}
     >
+      <head>
+        <link rel="preconnect" href="https://github.com" />
+        <link
+          rel="preconnect"
+          href="https://objects.githubusercontent.com"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body className="font-sans antialiased">{children}</body>
     </html>
   );

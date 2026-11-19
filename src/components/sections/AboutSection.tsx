@@ -54,7 +54,7 @@ export function AboutSection() {
           <div className="flex flex-col justify-center lg:col-span-8">
             <div className="space-y-4 border-l-2 border-[var(--accent)] pl-4">
               <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--accent)] sm:text-xs">
-                {ABOUT_DATA.nickName}
+                {ABOUT_DATA.role}
               </p>
               <h1 className="text-2xl font-bold leading-[1.15] tracking-tight text-[var(--text-primary)] sm:text-4xl lg:text-[42px]">
                 {ABOUT_DATA.fullName}
