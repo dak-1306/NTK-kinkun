@@ -1,4 +1,4 @@
-import { getMediaUrl } from "./assets";
+import { PORTFOLIO_VIDEOS } from "./assets";
 import type { ProjectGenreSectionData } from "@/types/project";
 
 export const PROJECT_UI_LABELS = {
@@ -27,17 +27,6 @@ export const PROJECT_UI_LABELS = {
   },
 } as const;
 
-const VIDEO_BADCHOICES = getMediaUrl("/badchoices.45.mp4");
-const VIDEO_FINAL = getMediaUrl("/final.mp4");
-const VIDEO_DAKI = getMediaUrl("/the.Daki.team.mp4");
-
-const DRIVE_BADCHOICES =
-  "https://drive.google.com/file/d/1M4baBZaZyAdW2DZ9b34Sl11-1fHN2euk/view?usp=drive_link";
-const DRIVE_FINAL =
-  "https://drive.google.com/file/d/1n5Yib6md7b9L1cBFICAMy9XTlg-IqTxb/view?usp=drive_link";
-const DRIVE_DAKI =
-  "https://drive.google.com/file/d/1R9yU3YUBBzHKtOwlAbwOjm4cBcmDjnP5/view?usp=drive_link";
-
 export const PROJECT_GENRES: readonly ProjectGenreSectionData[] = [
   {
     id: "project-01",
@@ -49,22 +38,18 @@ export const PROJECT_GENRES: readonly ProjectGenreSectionData[] = [
     items: [
       {
         id: "p1-01",
-
-        title: "BAD CHOICES",
-
-        previewVideoUrl: VIDEO_BADCHOICES,
-        fullVideoUrl: VIDEO_BADCHOICES,
-        driveUrl: DRIVE_BADCHOICES,
+        title: PORTFOLIO_VIDEOS.badChoices.title,
+        previewVideoUrl: PORTFOLIO_VIDEOS.badChoices.videoUrl,
+        fullVideoUrl: PORTFOLIO_VIDEOS.badChoices.videoUrl,
+        driveUrl: PORTFOLIO_VIDEOS.badChoices.driveUrl,
         isFeatured: true,
       },
       {
         id: "p1-02",
-
-        title: "FINAL CUT",
-
-        previewVideoUrl: VIDEO_FINAL,
-        fullVideoUrl: VIDEO_FINAL,
-        driveUrl: DRIVE_FINAL,
+        title: PORTFOLIO_VIDEOS.finalCut.title,
+        previewVideoUrl: PORTFOLIO_VIDEOS.finalCut.videoUrl,
+        fullVideoUrl: PORTFOLIO_VIDEOS.finalCut.videoUrl,
+        driveUrl: PORTFOLIO_VIDEOS.finalCut.driveUrl,
       },
     ],
   },
@@ -78,12 +63,10 @@ export const PROJECT_GENRES: readonly ProjectGenreSectionData[] = [
     items: [
       {
         id: "mv-01",
-
-        title: "THE DAKI TEAM",
-
-        previewVideoUrl: VIDEO_DAKI,
-        fullVideoUrl: VIDEO_DAKI,
-        driveUrl: DRIVE_DAKI,
+        title: PORTFOLIO_VIDEOS.dakiTeam.title,
+        previewVideoUrl: PORTFOLIO_VIDEOS.dakiTeam.videoUrl,
+        fullVideoUrl: PORTFOLIO_VIDEOS.dakiTeam.videoUrl,
+        driveUrl: PORTFOLIO_VIDEOS.dakiTeam.driveUrl,
         isFeatured: true,
       },
     ],
